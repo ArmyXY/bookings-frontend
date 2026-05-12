@@ -28,7 +28,7 @@ export interface UpdateBookingDto {
   serviceName?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export async function getAppointments(): Promise<Booking[]> {
   const res = await fetch(`${API_URL}/appointments`, {
@@ -77,9 +77,7 @@ export async function updateAppointment(
   return res.json();
 }
 
-export async function deleteAppointment(
-  id: number
-): Promise<{ message: string }> {
+export async function deleteAppointment(id: number): Promise<void> {
   const res = await fetch(`${API_URL}/appointments/${id}`, {
     method: "DELETE",
   });
@@ -88,5 +86,5 @@ export async function deleteAppointment(
     throw new Error("Error al eliminar la reserva");
   }
 
-  return res.json();
+  return;
 }
