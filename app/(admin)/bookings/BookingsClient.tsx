@@ -38,10 +38,8 @@ function formatDate(date: string) {
 
 export default function BookingsClient({
   initialBookings,
-  initialError = "",
 }: {
   initialBookings: Booking[];
-  initialError?: string;
 }) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
 
@@ -62,7 +60,7 @@ export default function BookingsClient({
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [deletingBookingId, setDeletingBookingId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState(initialError);
+  const [errorMessage, setErrorMessage] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
