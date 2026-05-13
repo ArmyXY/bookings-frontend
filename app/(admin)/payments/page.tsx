@@ -121,7 +121,7 @@ export default function PaymentsPage() {
       <section className="section-card">
         <div className="panel-title-row">
           <h3 className="panel-title">Listado de cobros</h3>
-          <span style={{ color: "#6b7280", fontSize: 14 }}>
+          <span style={{ color: "var(--muted)", fontSize: 14 }}>
             {payments.length} resultados
           </span>
         </div>
