@@ -16,16 +16,12 @@ export type Customer = {
   email: string;
   phone?: string | null;
   appointments?: Appointment[];
-<<<<<<< HEAD
   createdAt?: string;
   updatedAt?: string;
-=======
->>>>>>> feature/dashboard
 };
 
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
-<<<<<<< HEAD
 export enum PaymentMethod {
   CASH = "cash",
   CARD = "card",
@@ -40,8 +36,7 @@ export type Payment = {
   appointmentId: number;
   createdAt: string;
   appointment?: Appointment;
-=======
-export type PaymentMethod = "cash" | "card" | "transfer";
+};
 
 export type DashboardStats = {
   stats: {
@@ -70,5 +65,4 @@ export type DashboardStats = {
       date: string;
     }[];
   };
->>>>>>> feature/dashboard
 };

@@ -202,13 +202,8 @@ export default function CustomersPage() {
     <div className="page-stack">
       <section className="page-hero">
         <div>
-<<<<<<< HEAD
-          <h2>Customer directory</h2>
-          <p>Clientes conectados con la API.</p>
-=======
           <h2>Directorio de clientes</h2>
           <p>Gestión visual de clientes y próximas reservas.</p>
->>>>>>> feature/dashboard
         </div>
 
         <button className="primary-btn" type="button" onClick={openCreateForm}>
