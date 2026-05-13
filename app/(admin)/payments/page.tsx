@@ -151,7 +151,7 @@ export default function PaymentsPage() {
               ))}
               {payments.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", py: 20, color: "#6b7280" }}>
+                  <td colSpan={6} style={{ textAlign: "center", paddingTop: 20, paddingBottom: 20, color: "#6b7280" }}>
                     No hay cobros registrados.
                   </td>
                 </tr>
