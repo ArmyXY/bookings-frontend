@@ -1,5 +1,6 @@
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
+import RouteLoadingOverlay from "@/components/layout/RouteLoadingOverlay";
 
 export default function AdminLayout({
   children,
@@ -8,6 +9,7 @@ export default function AdminLayout({
 }) {
   return (
     <div className="admin-shell">
+      <RouteLoadingOverlay />
       <Sidebar />
 
       <div className="admin-main">

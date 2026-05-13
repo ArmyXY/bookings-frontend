@@ -97,11 +97,9 @@ export default function DashboardPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [activeView, setActiveView] = useState<DashboardView>("resumen");
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  async function loadDashboard(showRefreshing = false) {
-    if (showRefreshing) setRefreshing(true);
+  async function loadDashboard() {
     setErrorMessage("");
 
     try {
@@ -117,7 +115,6 @@ export default function DashboardPage() {
       setErrorMessage("No se pudieron cargar los datos del panel.");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }
 
@@ -145,15 +142,6 @@ export default function DashboardPage() {
           <h2>Panel de control</h2>
           <p>Control diario de reservas, clientes y cobros.</p>
         </div>
-
-        <button
-          className="primary-btn"
-          type="button"
-          onClick={() => loadDashboard(true)}
-          disabled={refreshing}
-        >
-          {refreshing ? "Actualizando..." : "Actualizar datos"}
-        </button>
       </section>
 
       {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
