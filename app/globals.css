@@ -29,6 +29,9 @@
   --sidebar-link-hover: #f8fafc;
   --sidebar-link-active-bg: #eef2ff;
   --sidebar-link-active-text: #1e3a8a;
+
+  /* Animaciones */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme="dark"] {
@@ -58,6 +61,35 @@
   --sidebar-link-hover: #334155;
   --sidebar-link-active-bg: #334155;
   --sidebar-link-active-text: #f8fafc;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  border-top-color: white;
+}
+
+.page-transition {
+  animation: page-in 400ms var(--ease-out-expo) forwards;
 }
 
 * {
@@ -691,4 +723,56 @@ body {
 .danger-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+/* Route Loading Overlay (Microsoft Teams Style) */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.route-loading {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6); /* Fondo oscuro más profundo */
+  backdrop-filter: blur(10px); /* Desenfoque más pronunciado y moderno */
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  pointer-events: all;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.route-loading__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: transparent; /* Sin fondo */
+  box-shadow: none; /* Sin sombras */
+  border: none; /* Sin bordes */
+  padding: 0;
+}
+
+.route-loading__spinner {
+  width: 48px; /* Un poco más grande para que sea elegante */
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #ffffff; /* Spinner blanco puro */
+  border-radius: 50%;
+  animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.route-loading__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff; /* Texto blanco puro */
+  letter-spacing: 0.05em;
+  text-transform: uppercase; /* Un toque más moderno */
 }
