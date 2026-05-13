@@ -236,7 +236,7 @@ export default function BookingsClient({
     <div className="page-stack">
       <section className="page-hero">
         <div>
-          <h2>Bookings list</h2>
+          <h2>Listado de reservas</h2>
           <p>Gestión de reservas conectada con la API.</p>
         </div>
 
@@ -319,7 +319,7 @@ export default function BookingsClient({
                 onChange={(e) =>
                   updateCreateForm("customerId", Number(e.target.value))
                 }
-                placeholder="Customer ID"
+                placeholder="ID de cliente"
                 required
               />
               <input
@@ -398,7 +398,7 @@ export default function BookingsClient({
                 onChange={(e) =>
                   updateEditForm("customerId", Number(e.target.value))
                 }
-                placeholder="Customer ID"
+                placeholder="ID de cliente"
                 required
               />
               <input
@@ -494,7 +494,7 @@ export default function BookingsClient({
               <th>Fecha</th>
               <th>Hora</th>
               <th>Servicio</th>
-              <th>Customer</th>
+              <th>Cliente</th>
               <th>Business</th>
               <th>Estado</th>
               <th>Acciones</th>

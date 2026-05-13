@@ -48,7 +48,7 @@ export default function CustomersPage() {
     <div className="page-stack">
       <section className="page-hero">
         <div>
-          <h2>Customer directory</h2>
+          <h2>Directorio de clientes</h2>
           <p>Gestión visual de clientes y próximas reservas.</p>
         </div>
 

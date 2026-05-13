@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Bookings Admin",
-  description: "Base inicial del proyecto de gestión de reservas",
+  title: "Panel de reservas",
+  description: "Base inicial del proyecto de gestion de reservas",
 };
 
 export default function RootLayout({

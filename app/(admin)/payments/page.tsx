@@ -92,7 +92,7 @@ export default function PaymentsPage() {
     <div className="page-stack">
       <section className="page-hero">
         <div>
-          <h2>Payments</h2>
+          <h2>Cobros</h2>
           <p>Seguimiento de cobros realizados y pendientes.</p>
         </div>
 

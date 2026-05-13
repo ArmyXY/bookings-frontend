@@ -1,3 +1,5 @@
+import type { Customer, DashboardStats } from "./types";
+
 export type BookingStatus = "pending" | "confirmed" | "paid";
 
 export interface Booking {
@@ -87,4 +89,28 @@ export async function deleteAppointment(id: number): Promise<void> {
   }
 
   return;
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const res = await fetch(`${API_URL}/dashboard/stats`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al obtener los datos del panel");
+  }
+
+  return res.json();
+}
+
+export async function getCustomers(): Promise<Customer[]> {
+  const res = await fetch(`${API_URL}/customers`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al obtener los clientes");
+  }
+
+  return res.json();
 }
