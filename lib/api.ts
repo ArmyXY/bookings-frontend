@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
   Appointment,
   AppointmentStatus,
@@ -6,6 +7,11 @@ import {
   PaymentMethod,
   PaymentStatus,
 } from "./types";
+=======
+import type { Customer, DashboardStats } from "./types";
+
+export type BookingStatus = "pending" | "confirmed" | "paid";
+>>>>>>> feature/dashboard
 
 export type BookingStatus = AppointmentStatus;
 export type Booking = Appointment;
@@ -104,12 +110,18 @@ export async function deleteAppointment(id: number): Promise<void> {
   return;
 }
 
+<<<<<<< HEAD
 export async function getPayments(): Promise<Payment[]> {
   const res = await fetch(`${API_URL}/payments`, {
+=======
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const res = await fetch(`${API_URL}/dashboard/stats`, {
+>>>>>>> feature/dashboard
     cache: "no-store",
   });
 
   if (!res.ok) {
+<<<<<<< HEAD
     throw new Error("Error al obtener los pagos");
   }
 
@@ -127,6 +139,9 @@ export async function createPayment(data: CreatePaymentDto): Promise<Payment> {
 
   if (!res.ok) {
     throw new Error("Error al registrar el pago");
+=======
+    throw new Error("Error al obtener los datos del panel");
+>>>>>>> feature/dashboard
   }
 
   return res.json();
@@ -143,6 +158,7 @@ export async function getCustomers(): Promise<Customer[]> {
 
   return res.json();
 }
+<<<<<<< HEAD
 
 export async function createCustomer(
   data: CreateCustomerDto
@@ -190,3 +206,5 @@ export async function deleteCustomer(id: number): Promise<void> {
     throw new Error("Error al eliminar el cliente");
   }
 }
+=======
+>>>>>>> feature/dashboard
