@@ -1,14 +1,14 @@
-export type BookingStatus = "pending" | "confirmed" | "paid";
+import {
+  Appointment,
+  AppointmentStatus,
+  Customer,
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
+} from "./types";
 
-export interface Booking {
-  id: number;
-  date: string;
-  time: string;
-  status: BookingStatus;
-  customerId: number;
-  businessId: number;
-  serviceName: string;
-}
+export type BookingStatus = AppointmentStatus;
+export type Booking = Appointment;
 
 export interface CreateBookingDto {
   date: string;
@@ -27,6 +27,21 @@ export interface UpdateBookingDto {
   businessId?: number;
   serviceName?: string;
 }
+
+export interface CreatePaymentDto {
+  amount: number;
+  status?: PaymentStatus;
+  method: PaymentMethod;
+  appointmentId: number;
+}
+
+export interface CreateCustomerDto {
+  name: string;
+  email: string;
+  phone?: string;
+}
+
+export type UpdateCustomerDto = Partial<CreateCustomerDto>;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -87,4 +102,91 @@ export async function deleteAppointment(id: number): Promise<void> {
   }
 
   return;
+}
+
+export async function getPayments(): Promise<Payment[]> {
+  const res = await fetch(`${API_URL}/payments`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al obtener los pagos");
+  }
+
+  return res.json();
+}
+
+export async function createPayment(data: CreatePaymentDto): Promise<Payment> {
+  const res = await fetch(`${API_URL}/payments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al registrar el pago");
+  }
+
+  return res.json();
+}
+
+export async function getCustomers(): Promise<Customer[]> {
+  const res = await fetch(`${API_URL}/customers`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al obtener los clientes");
+  }
+
+  return res.json();
+}
+
+export async function createCustomer(
+  data: CreateCustomerDto
+): Promise<Customer> {
+  const res = await fetch(`${API_URL}/customers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al crear el cliente");
+  }
+
+  return res.json();
+}
+
+export async function updateCustomer(
+  id: number,
+  data: UpdateCustomerDto
+): Promise<Customer> {
+  const res = await fetch(`${API_URL}/customers/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al editar el cliente");
+  }
+
+  return res.json();
+}
+
+export async function deleteCustomer(id: number): Promise<void> {
+  const res = await fetch(`${API_URL}/customers/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al eliminar el cliente");
+  }
 }
