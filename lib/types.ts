@@ -10,6 +10,16 @@ export type Appointment = {
   serviceName: string;
 };
 
+export type Customer = {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  appointments?: Appointment[];
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
 export enum PaymentMethod {
