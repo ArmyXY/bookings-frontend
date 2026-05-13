@@ -23,9 +23,9 @@ function TimedRouteLoading() {
   if (!isVisible) return null;
 
   return (
-    <div className="route-loading" role="status" aria-live="polite">
+    <div className="route-loading">
       <div className="route-loading__card">
-        <div className="route-loading__spinner" aria-hidden="true" />
+        <div className="route-loading__spinner" />
         <p className="route-loading__title">Cargando...</p>
       </div>
     </div>

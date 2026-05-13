@@ -214,7 +214,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {loading ? <div className="customer-card">Cargando datos...</div> : null}
+        {loading ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0" }}>
+            <div className="spinner"></div>
+            <span style={{ color: "var(--muted)", fontSize: 14 }}>PRUEBA DE CARGA...</span>
+          </div>
+        ) : null}
 
         {!loading && dashboard && activeView === "resumen" ? (
           <section className="dashboard-grid">

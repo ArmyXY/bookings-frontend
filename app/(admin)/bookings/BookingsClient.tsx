@@ -346,8 +346,20 @@ export default function BookingsClient({
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
 
             <div className="message-row">
-              <button className="primary-btn" type="submit" disabled={loadingCreate}>
-                {loadingCreate ? "Guardando..." : "Crear reserva"}
+              <button
+                className="primary-btn"
+                type="submit"
+                disabled={loadingCreate}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                {loadingCreate ? (
+                  <>
+                    <div className="spinner spinner--sm"></div>
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  "Crear reserva"
+                )}
               </button>
             </div>
           </form>
@@ -425,8 +437,20 @@ export default function BookingsClient({
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
 
             <div className="message-row">
-              <button className="primary-btn" type="submit" disabled={loadingEdit}>
-                {loadingEdit ? "Guardando..." : "Guardar cambios"}
+              <button
+                className="primary-btn"
+                type="submit"
+                disabled={loadingEdit}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                {loadingEdit ? (
+                  <>
+                    <div className="spinner spinner--sm"></div>
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  "Guardar cambios"
+                )}
               </button>
             </div>
           </form>
@@ -465,8 +489,16 @@ export default function BookingsClient({
                 className="danger-btn"
                 onClick={confirmDelete}
                 disabled={deletingBookingId === deleteTargetId}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
               >
-                {deletingBookingId === deleteTargetId ? "Eliminando..." : "Eliminar"}
+                {deletingBookingId === deleteTargetId ? (
+                  <>
+                    <div className="spinner spinner--sm"></div>
+                    <span>Eliminando...</span>
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
               </button>
             </div>
           </div>
