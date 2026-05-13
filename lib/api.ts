@@ -1,14 +1,7 @@
-export type BookingStatus = "pending" | "confirmed" | "paid";
+import { Appointment, AppointmentStatus, Payment, PaymentMethod, PaymentStatus } from "./types";
 
-export interface Booking {
-  id: number;
-  date: string;
-  time: string;
-  status: BookingStatus;
-  customerId: number;
-  businessId: number;
-  serviceName: string;
-}
+export type BookingStatus = AppointmentStatus;
+export type Booking = Appointment;
 
 export interface CreateBookingDto {
   date: string;
@@ -26,6 +19,13 @@ export interface UpdateBookingDto {
   customerId?: number;
   businessId?: number;
   serviceName?: string;
+}
+
+export interface CreatePaymentDto {
+  amount: number;
+  status?: PaymentStatus;
+  method: PaymentMethod;
+  appointmentId: number;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
@@ -87,4 +87,32 @@ export async function deleteAppointment(id: number): Promise<void> {
   }
 
   return;
+}
+
+export async function getPayments(): Promise<Payment[]> {
+  const res = await fetch(`${API_URL}/payments`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al obtener los pagos");
+  }
+
+  return res.json();
+}
+
+export async function createPayment(data: CreatePaymentDto): Promise<Payment> {
+  const res = await fetch(`${API_URL}/payments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al registrar el pago");
+  }
+
+  return res.json();
 }
