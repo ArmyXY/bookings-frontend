@@ -499,9 +499,9 @@ export default function BookingsClient({
           <h3 className="panel-title">Reservas registradas</h3>
           <div className="filter-row">
             <button type="button" className={`filter-pill ${statusFilter === "all" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("all")}>Todas</button>
-            <button type="button" className={`filter-pill ${statusFilter === "pending" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("pending")}>Pendientes</button>
-            <button type="button" className={`filter-pill ${statusFilter === "confirmed" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("confirmed")}>Confirmadas</button>
-            <button type="button" className={`filter-pill ${statusFilter === "paid" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("paid")}>Pagadas</button>
+            <button type="button" className={`filter-pill ${statusFilter === "pendiente" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("pendiente")}>Pendientes</button>
+            <button type="button" className={`filter-pill ${statusFilter === "confirmado" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("confirmado")}>Confirmadas</button>
+            <button type="button" className={`filter-pill ${statusFilter === "completado" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("completado")}>Completadas</button>
           </div>
         </div>
 
