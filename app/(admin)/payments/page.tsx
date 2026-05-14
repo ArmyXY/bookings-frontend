@@ -259,18 +259,16 @@ export default function PaymentsPage() {
       {successMessage ? <div className="message-success">{successMessage}</div> : null}
       {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
 
-      <section className="section-card">
+      <section className="section-card page-transition" style={{ animationDelay: "100ms" }}>
         <div className="panel-title-row">
-          <h3 className="panel-title">Listado de cobros</h3>
+          <h3 className="panel-title">Historial de Transacciones</h3>
           <div className="filter-row">
-            <button type="button" className="filter-pill" onClick={() => setStatusFilter("all")}>
-              Todos
-            </button>
+            <button type="button" className={`filter-pill ${statusFilter === "all" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("all")}>Todos</button>
             {paymentFilterStatuses.map(({ label, value }) => (
               <button
                 key={value}
                 type="button"
-                className="filter-pill"
+                className={`filter-pill ${statusFilter === value ? "filter-pill--active" : ""}`}
                 onClick={() => setStatusFilter(value)}
               >
                 {label}
@@ -279,71 +277,64 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        <span style={{ color: "var(--muted)", fontSize: 14 }}>
-          {filteredPayments.length} de {payments.length} resultados
-        </span>
-
         {loading ? (
-          <p>Cargando cobros...</p>
+          <div style={{ padding: "40px", textAlign: "center" }}>
+            <div className="spinner" style={{ margin: "0 auto 16px" }}></div>
+            <p>Sincronizando datos...</p>
+          </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Cita</th>
-                <th>Cliente</th>
-                <th>Negocio</th>
+                <th>Referencia</th>
+                <th>Operación</th>
                 <th>Importe</th>
-                <th>Metodo</th>
+                <th>Método</th>
                 <th>Fecha</th>
                 <th>Estado</th>
-                <th>Acciones</th>
+                <th style={{ textAlign: "right" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.length > 0 ? (
-                filteredPayments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td style={{ fontWeight: 600 }}>
-                      COB-{String(payment.id).padStart(3, "0")}
-                    </td>
-                    <td>#{payment.appointmentId}</td>
-                    <td>{getCustomerName(payment)}</td>
-                    <td>{getBusinessName(payment)}</td>
-                    <td>{formatCurrency(Number(payment.amount))}</td>
-                    <td>{paymentMethodLabels[payment.method]}</td>
-                    <td>{formatDate(payment.createdAt)}</td>
-                    <td>
-                      <Badge status={payment.status} />
-                    </td>
-                    <td>
-                      <div className="table-actions">
-                        <button
-                          className="secondary-btn table-action-btn"
-                          type="button"
-                          onClick={() => markPaymentAsPaid(payment.id)}
-                          disabled={
-                            payment.status !== "pendiente" || updatingPaymentId === payment.id
-                          }
-                        >
-                          {updatingPaymentId === payment.id ? "Actualizando..." : "Marcar pagado"}
-                        </button>
-                        <button
-                          className="secondary-btn table-action-btn"
-                          type="button"
-                          onClick={() => removePayment(payment.id)}
-                          disabled={deletingPaymentId === payment.id}
-                        >
-                          {deletingPaymentId === payment.id ? "Eliminando..." : "Eliminar"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
+              {filteredPayments.map((payment) => (
+                <tr key={payment.id}>
+                  <td style={{ fontWeight: 700, color: "var(--muted)" }}>#PY-{String(payment.id).padStart(3, '0')}</td>
+                  <td style={{ color: "var(--text)", fontWeight: 500 }}>Reserva #{payment.appointmentId} <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 8 }}>({getCustomerName(payment)})</span></td>
+                  <td style={{ fontWeight: 800, fontSize: "16px" }}>{Number(payment.amount).toFixed(2)} €</td>
+                  <td style={{ textTransform: "uppercase", fontSize: "12px", fontWeight: 700 }}>{paymentMethodLabels[payment.method]}</td>
+                  <td>{new Date(payment.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                  <td>
+                    <Badge status={payment.status} />
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        style={{ padding: "8px 16px" }}
+                        onClick={() => markPaymentAsPaid(payment.id)}
+                        disabled={payment.status !== "pendiente" || updatingPaymentId === payment.id}
+                      >
+                        {updatingPaymentId === payment.id ? "..." : "Pagado"}
+                      </button>
+                      <button
+                        className="secondary-btn"
+                        type="button"
+                        style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }}
+                        onClick={() => removePayment(payment.id)}
+                        disabled={deletingPaymentId === payment.id}
+                      >
+                        {deletingPaymentId === payment.id ? "..." : "Eliminar"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredPayments.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="empty-table-cell">
-                    No hay cobros registrados.
+                  <td colSpan={7} style={{ textAlign: "center", padding: "64px", color: "var(--muted)" }}>
+                    <div style={{ fontSize: "32px", marginBottom: "12px", opacity: 0.5 }}>∅</div>
+                    No se encontraron cobros.
                   </td>
                 </tr>
               )}

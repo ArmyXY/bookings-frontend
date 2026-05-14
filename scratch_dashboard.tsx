@@ -4,51 +4,34 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type {
   AppointmentStatus,
-  Business,
   Customer,
   DashboardStats,
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/types";
 import type { Booking } from "@/lib/api";
-import {
-  getAppointments,
-  getBusinesses,
-  getCustomers,
-  getDashboardStats,
-} from "@/lib/api";
+import { getAppointments, getCustomers, getDashboardStats } from "@/lib/api";
 
-type DashboardView = "resumen" | "reservas" | "clientes" | "negocios" | "pagos";
-
-const appointmentStatusLabels: Record<AppointmentStatus, string> = {
-  pendiente: "Pendiente",
-  confirmado: "Confirmada",
-  completado: "Completada",
-  cancelado: "Cancelada",
-};
-
-const paymentStatusLabels: Record<PaymentStatus, string> = {
-  pendiente: "Pendiente",
-  pagado: "Pagado",
-  devolucion: "Devuelto",
-  "devolución": "Devuelto",
-  "devoluciÃ³n": "Devuelto",
-};
-
-const paymentMethodLabels: Record<PaymentMethod, string> = {
-  efectivo: "Efectivo",
-  tarjeta: "Tarjeta",
-  transferencia: "Transferencia",
-};
+type DashboardView = "resumen" | "reservas" | "clientes" | "pagos";
 
 function Badge({ status }: { status: AppointmentStatus | PaymentStatus }) {
-  const labels = { ...appointmentStatusLabels, ...paymentStatusLabels };
+  const labels: Record<AppointmentStatus | PaymentStatus, string> = {
+    pending: "Pendiente",
+    confirmed: "Confirmada",
+    paid: "Pagada",
+    completed: "Completado",
+    failed: "Fallido",
+    refunded: "Devuelto",
+  };
+
   const badgeStatus =
-    status === "confirmado" || status === "completado" || status === "pagado"
+    status === "completed"
       ? "confirmed"
-      : status === "cancelado" || status === "devolucion" || status === "devolución" || status === "devoluciÃ³n"
+      : status === "refunded"
         ? "paid"
-        : "pending";
+        : status === "failed"
+          ? "pending"
+          : status;
 
   return <span className={`badge badge--${badgeStatus}`}>{labels[status]}</span>;
 }
@@ -94,13 +77,6 @@ function KpiCard({
       </svg>
     );
 
-  const metaClass =
-    variant === "positive"
-      ? "kpi-card__meta--positive"
-      : variant === "warning"
-        ? "kpi-card__meta--warning"
-        : "";
-
   return (
     <div className="kpi-card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -108,7 +84,17 @@ function KpiCard({
         <span style={{ color: "var(--primary)", opacity: 0.8 }}>{icon}</span>
       </div>
       <h3 className="kpi-card__value">{value}</h3>
-      <p className={`kpi-card__meta ${metaClass}`}>{subtitle}</p>
+      <p
+        className={`kpi-card__meta ${
+          variant === "positive"
+            ? "kpi-card__meta--positive"
+            : variant === "warning"
+              ? "kpi-card__meta--warning"
+              : ""
+        }`}
+      >
+        {subtitle}
+      </p>
     </div>
   );
 }
@@ -128,19 +114,20 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
-function getCustomerName(booking: Booking) {
-  return booking.customer?.name ?? `Cliente #${booking.customerId}`;
-}
+function paymentMethodLabel(method: PaymentMethod) {
+  const labels: Record<PaymentMethod, string> = {
+    cash: "Efectivo",
+    card: "Tarjeta",
+    transfer: "Transferencia",
+  };
 
-function getBusinessName(booking: Booking) {
-  return booking.business?.name ?? `Negocio #${booking.businessId}`;
+  return labels[method];
 }
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardStats | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeView, setActiveView] = useState<DashboardView>("resumen");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -149,16 +136,14 @@ export default function DashboardPage() {
     setErrorMessage("");
 
     try {
-      const [data, appointmentsData, customersData, businessesData] = await Promise.all([
+      const [data, appointmentsData, customersData] = await Promise.all([
         getDashboardStats(),
         getAppointments(),
         getCustomers(),
-        getBusinesses(),
       ]);
       setDashboard(data);
       setBookings(appointmentsData);
       setCustomers(customersData);
-      setBusinesses(businessesData);
     } catch {
       setErrorMessage("No se pudieron cargar los datos del panel.");
     } finally {
@@ -183,23 +168,12 @@ export default function DashboardPage() {
     );
   }, [dashboard]);
 
-  const activeTitle =
-    activeView === "reservas"
-      ? "Reservas registradas"
-      : activeView === "clientes"
-        ? "Clientes registrados"
-        : activeView === "negocios"
-          ? "Negocios registrados"
-          : activeView === "pagos"
-            ? "Pagos recientes"
-            : "Datos del panel";
-
   return (
     <div className="page-stack">
       <section className="page-hero">
         <div style={{ position: "relative", zIndex: 2 }}>
           <h2>Panel de control</h2>
-          <p>Control diario de reservas, clientes, negocios y cobros.</p>
+          <p>Control diario de reservas, clientes y cobros.</p>
         </div>
         <div style={{
           position: "absolute",
@@ -232,40 +206,65 @@ export default function DashboardPage() {
           subtitle="Reservas registradas"
         />
         <KpiCard
-          title="Negocios"
-          value={String(businesses.length)}
-          subtitle="Comercios conectados"
+          title="Reservas pendientes"
+          value={dashboard ? String(dashboard.appointmentsByStatus.pending) : "-"}
+          subtitle="Seguimiento necesario"
+          variant="warning"
         />
         <KpiCard
           title="Clientes"
           value={dashboard ? String(dashboard.stats.totalCustomers) : "-"}
-          subtitle="Clientes registrados"
+          subtitle="Clientes registrados correctamente"
         />
       </section>
 
       <section className="section-card">
-        <div className="panel-title-row">
-          <h3 className="panel-title">{activeTitle}</h3>
+        <div className="panel-title-row" style={{ marginBottom: "48px" }}>
+          <h3 className="panel-title">
+            {activeView === "reservas"
+              ? "Reservas registradas"
+              : activeView === "clientes"
+                ? "Directorio de clientes"
+                : activeView === "pagos"
+                  ? "Pagos recientes"
+                  : "Panel de Resumen"}
+          </h3>
           <div className="filter-row">
-            {(["resumen", "reservas", "clientes", "negocios", "pagos"] as DashboardView[]).map(
-              (view) => (
-                <button
-                  key={view}
-                  className={`filter-pill ${activeView === view ? "filter-pill--active" : ""}`}
-                  type="button"
-                  onClick={() => setActiveView(view)}
-                >
-                  {view.charAt(0).toUpperCase() + view.slice(1)}
-                </button>
-              )
-            )}
+            <button
+              className={`filter-pill ${activeView === "resumen" ? "filter-pill--active" : ""}`}
+              type="button"
+              onClick={() => setActiveView("resumen")}
+            >
+              Resumen
+            </button>
+            <button
+              className={`filter-pill ${activeView === "reservas" ? "filter-pill--active" : ""}`}
+              type="button"
+              onClick={() => setActiveView("reservas")}
+            >
+              Reservas
+            </button>
+            <button
+              className={`filter-pill ${activeView === "clientes" ? "filter-pill--active" : ""}`}
+              type="button"
+              onClick={() => setActiveView("clientes")}
+            >
+              Clientes
+            </button>
+            <button
+              className={`filter-pill ${activeView === "pagos" ? "filter-pill--active" : ""}`}
+              type="button"
+              onClick={() => setActiveView("pagos")}
+            >
+              Pagos
+            </button>
           </div>
         </div>
 
         {loading ? (
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0" }}>
             <div className="spinner"></div>
-            <span style={{ color: "var(--muted)", fontSize: 14 }}>Cargando...</span>
+            <span style={{ color: "var(--muted)", fontSize: 14 }}>SINCRONIZANDO DATOS...</span>
           </div>
         ) : null}
 
@@ -300,13 +299,13 @@ export default function DashboardPage() {
                     <td><span className="badge badge--confirmed" style={{ fontSize: "10px" }}>RESERVA</span></td>
                     <td style={{ fontWeight: 600 }}>{apt.customer} - {apt.service}</td>
                     <td>{formatDate(apt.date)}</td>
-                    <td><Badge status={apt.status} /></td>
+                    <td><Badge status="confirmed" /></td>
                   </tr>
                 ))}
                 {dashboard.recentActivity.payments.slice(0, 3).map((pay, i) => (
                   <tr key={`pay-${i}`}>
                     <td><span className="badge badge--paid" style={{ fontSize: "10px" }}>PAGO</span></td>
-                    <td style={{ fontWeight: 600 }}>Cobro registrado ({paymentMethodLabels[pay.method]})</td>
+                    <td style={{ fontWeight: 600 }}>Cobro registrado ({paymentMethodLabel(pay.method)})</td>
                     <td>{formatDate(pay.date)}</td>
                     <td style={{ fontWeight: 700 }}>{formatCurrency(Number(pay.amount))}</td>
                   </tr>
@@ -335,7 +334,6 @@ export default function DashboardPage() {
                   <th>Hora</th>
                   <th>Servicio</th>
                   <th>Cliente</th>
-                  <th>Negocio</th>
                   <th>Estado</th>
                 </tr>
               </thead>
@@ -347,8 +345,7 @@ export default function DashboardPage() {
                       <td>{formatDate(booking.date)}</td>
                       <td>{booking.time}</td>
                       <td style={{ fontWeight: 600 }}>{booking.serviceName}</td>
-                      <td>{getCustomerName(booking)}</td>
-                      <td>{getBusinessName(booking)}</td>
+                      <td>ID: {booking.customerId}</td>
                       <td>
                         <Badge status={booking.status} />
                       </td>
@@ -356,7 +353,7 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>No hay reservas registradas.</td>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>No hay reservas registradas.</td>
                   </tr>
                 )}
               </tbody>
@@ -380,7 +377,7 @@ export default function DashboardPage() {
               gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", 
               gap: "24px" 
             }}>
-              {customers.length > 0 ? customers.map((customer) => (
+              {customers.map((customer) => (
                 <div key={customer.id} className="surface-card" style={{ 
                   padding: "24px", 
                   display: "flex", 
@@ -402,7 +399,7 @@ export default function DashboardPage() {
                     color: "var(--primary)",
                     border: "2px solid var(--border)"
                   }}>
-                    {customer.name.charAt(0).toUpperCase()}
+                    {customer.name.charAt(0)}
                   </div>
                   <div>
                     <h4 style={{ margin: "0 0 4px", fontSize: "18px", fontWeight: 800 }}>{customer.name}</h4>
@@ -423,58 +420,8 @@ export default function DashboardPage() {
                     ID: #{customer.id.toString().padStart(3, '0')}
                   </div>
                 </div>
-              )) : (
-                <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "48px", color: "var(--muted)" }}>
-                  No hay clientes registrados.
-                </div>
-              )}
+              ))}
             </div>
-          </div>
-        ) : null}
-
-        {!loading && activeView === "negocios" ? (
-          <div className="page-stack" style={{ gap: 24 }}>
-            <div className="panel-title-row" style={{ marginBottom: 0 }}>
-              <span style={{ color: "var(--muted)", fontSize: 14, fontWeight: 600 }}>
-                {businesses.length.toString().padStart(2, '0')} NEGOCIOS REGISTRADOS
-              </span>
-              <Link className="secondary-btn" href="/businesses">
-                Ver página completa
-              </Link>
-            </div>
-
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Nombre</th>
-                  <th>Email</th>
-                  <th>Telefono</th>
-                  <th>Horario</th>
-                </tr>
-              </thead>
-              <tbody>
-                {businesses.length > 0 ? (
-                  businesses.map((business) => (
-                    <tr key={business.id}>
-                      <td style={{ fontWeight: 700, color: "var(--muted)" }}>#{business.id}</td>
-                      <td style={{ fontWeight: 600 }}>{business.name}</td>
-                      <td>{business.email}</td>
-                      <td>{business.phone}</td>
-                      <td>
-                        {business.openingTime} - {business.closingTime}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>
-                      No hay negocios registrados.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
         ) : null}
 
@@ -493,7 +440,7 @@ export default function DashboardPage() {
                 <tr>
                   <th>ID</th>
                   <th>Importe</th>
-                  <th>Metodo</th>
+                  <th>Método</th>
                   <th>Fecha</th>
                   <th>Estado</th>
                 </tr>
@@ -504,7 +451,7 @@ export default function DashboardPage() {
                     <tr key={payment.id}>
                       <td style={{ fontWeight: 700, color: "var(--muted)" }}>#PY-{String(payment.id).padStart(3, '0')}</td>
                       <td style={{ fontWeight: 800 }}>{formatCurrency(Number(payment.amount))}</td>
-                      <td style={{ textTransform: "uppercase", fontSize: "12px", fontWeight: 700 }}>{paymentMethodLabels[payment.method]}</td>
+                      <td style={{ textTransform: "uppercase", fontSize: "12px", fontWeight: 700 }}>{paymentMethodLabel(payment.method)}</td>
                       <td>{formatDate(payment.date)}</td>
                       <td>
                         <Badge status={payment.status} />
@@ -513,7 +460,7 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>No hay pagos recientes.</td>
+                    <td colSpan={5} style={{ textAlign: "center", padding: "48px" }}>No hay pagos recientes.</td>
                   </tr>
                 )}
               </tbody>

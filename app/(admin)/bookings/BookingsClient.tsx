@@ -446,23 +446,31 @@ export default function BookingsClient({
         </section>
       ) : null}
 
-      {deleteTargetId !== null ? (
+      {deleteTargetId !== null && (
         <div
           className="modal-backdrop"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="delete-modal-title"
+          aria-describedby="delete-modal-description"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeDeleteModal();
           }}
         >
           <div className="modal-card">
             <div className="modal-icon">!</div>
-            <h3 className="modal-title">Eliminar reserva</h3>
-            <p className="modal-text">
-              Seguro que quieres eliminar la reserva #{deleteTargetId}? Esta accion no se puede deshacer.
+            <h3 id="delete-modal-title" className="modal-title">
+              Eliminar reserva
+            </h3>
+            <p id="delete-modal-description" className="modal-text">
+              ¿Seguro que quieres eliminar la reserva #{deleteTargetId}? Esta acción no se puede deshacer.
             </p>
             <div className="modal-actions">
-              <button type="button" className="secondary-btn" onClick={closeDeleteModal}>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={closeDeleteModal}
+              >
                 Cancelar
               </button>
               <button
@@ -470,38 +478,35 @@ export default function BookingsClient({
                 className="danger-btn"
                 onClick={confirmDelete}
                 disabled={deletingBookingId === deleteTargetId}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
               >
-                {deletingBookingId === deleteTargetId ? "Eliminando..." : "Eliminar"}
+                {deletingBookingId === deleteTargetId ? (
+                  <>
+                    <div className="spinner spinner--sm"></div>
+                    <span>Eliminando...</span>
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
               </button>
             </div>
           </div>
         </div>
-      ) : null}
-
-      {successMessage ? <div className="message-success">{successMessage}</div> : null}
-      {errorMessage && !isCreateOpen && editingBookingId === null ? (
-        <div className="message-error">{errorMessage}</div>
-      ) : null}
+      )}
 
       <section className="section-card">
         <div className="panel-title-row">
           <h3 className="panel-title">Reservas registradas</h3>
           <div className="filter-row">
-            <button type="button" className="filter-pill" onClick={() => setStatusFilter("all")}>
-              Todas
-            </button>
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className="filter-pill"
-                onClick={() => setStatusFilter(value as BookingStatus)}
-              >
-                {label}
-              </button>
-            ))}
+            <button type="button" className={`filter-pill ${statusFilter === "all" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("all")}>Todas</button>
+            <button type="button" className={`filter-pill ${statusFilter === "pending" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("pending")}>Pendientes</button>
+            <button type="button" className={`filter-pill ${statusFilter === "confirmed" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("confirmed")}>Confirmadas</button>
+            <button type="button" className={`filter-pill ${statusFilter === "paid" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("paid")}>Pagadas</button>
           </div>
         </div>
+
+        {successMessage ? <div className="message-success" style={{ marginBottom: 12 }}>{successMessage}</div> : null}
+        {errorMessage ? <div className="message-error" style={{ marginBottom: 12 }}>{errorMessage}</div> : null}
 
         <table className="data-table">
           <thead>
@@ -511,68 +516,35 @@ export default function BookingsClient({
               <th>Hora</th>
               <th>Servicio</th>
               <th>Cliente</th>
-              <th>Negocio</th>
               <th>Estado</th>
-              <th>Acciones</th>
+              <th style={{ textAlign: "right" }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {filteredBookings.length > 0 ? (
-              filteredBookings.map((booking) => (
-                <tr key={booking.id}>
-                  <td style={{ fontWeight: 600 }}>{booking.id}</td>
-                  <td>{formatDate(booking.date)}</td>
-                  <td>{booking.time}</td>
-                  <td>{booking.serviceName}</td>
-                  <td>{getCustomerName(booking)}</td>
-                  <td>{getBusinessName(booking)}</td>
-                  <td>
-                    <StatusBadge status={booking.status} />
-                  </td>
-                  <td>
-                    <div className="table-actions">
-                      {booking.status === "pendiente" ? (
-                        <button
-                          type="button"
-                          className="secondary-btn table-action-btn"
-                          onClick={() => updateBookingStatus(booking.id, "confirmado")}
-                          disabled={updatingStatusId === booking.id}
-                        >
-                          Confirmar
-                        </button>
-                      ) : null}
-                      {booking.status !== "completado" ? (
-                        <button
-                          type="button"
-                          className="secondary-btn table-action-btn"
-                          onClick={() => updateBookingStatus(booking.id, "completado")}
-                          disabled={updatingStatusId === booking.id}
-                        >
-                          Completar
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="secondary-btn table-action-btn"
-                        onClick={() => openEditForm(booking)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-btn table-action-btn"
-                        onClick={() => openDeleteModal(booking.id)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
+            {filteredBookings.length > 0 ? filteredBookings.map((booking) => (
+              <tr key={booking.id}>
+                <td style={{ fontWeight: 700, color: "var(--muted)" }}>#{booking.id}</td>
+                <td>{formatDate(booking.date)}</td>
+                <td>{booking.time}</td>
+                <td style={{ fontWeight: 600 }}>{booking.serviceName}</td>
+                <td>{getCustomerName(booking)}</td>
+                <td><StatusBadge status={booking.status} /></td>
+                <td>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button type="button" className="secondary-btn" style={{ padding: "8px 16px" }} onClick={() => openEditForm(booking)}>
+                      Editar
+                    </button>
+                    <button type="button" className="secondary-btn" style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }} onClick={() => openDeleteModal(booking.id)}>
+                      Eliminar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )) : (
               <tr>
-                <td colSpan={8} className="empty-table-cell">
-                  No hay reservas registradas.
+                <td colSpan={7} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>
+                  <div style={{ fontSize: "28px", marginBottom: 8, opacity: 0.4 }}>∅</div>
+                  No hay reservas para este filtro.
                 </td>
               </tr>
             )}

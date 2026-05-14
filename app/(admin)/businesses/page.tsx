@@ -162,14 +162,32 @@ export default function BusinessesPage() {
   return (
     <div className="page-stack">
       <section className="page-hero">
-        <div>
+        <div style={{ position: "relative", zIndex: 2 }}>
           <h2>Negocios</h2>
-          <p>Gestion de comercios, horarios y datos de contacto.</p>
+          <p>Gestión de comercios, horarios y datos de contacto.</p>
         </div>
 
-        <button className="primary-btn" type="button" onClick={openCreateForm}>
-          Nuevo negocio
-        </button>
+        <div style={{ position: "relative", zIndex: 3 }}>
+          <button className="primary-btn" type="button" onClick={openCreateForm}>
+            Nuevo negocio
+          </button>
+        </div>
+
+        <div style={{
+          position: "absolute",
+          top: "20px",
+          right: "40px",
+          opacity: 0.15,
+          color: "var(--primary)",
+          pointerEvents: "none",
+          transform: "rotate(8deg)"
+        }}>
+          <svg width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+            <path d="M9 2h6" />
+          </svg>
+        </div>
       </section>
 
       {isFormOpen ? (
@@ -251,14 +269,19 @@ export default function BusinessesPage() {
       ) : null}
 
       <section className="section-card">
-        <div className="search-row">
+        <form
+          className="search-row"
+          style={{ position: "relative", maxWidth: "600px", margin: "0 auto" }}
+          onSubmit={(e) => { e.preventDefault(); }}
+        >
           <input
             className="input"
+            style={{ height: "56px", fontSize: "16px" }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar negocio..."
+            placeholder="Buscar negocio por nombre, email o dirección..."
           />
-        </div>
+        </form>
       </section>
 
       {successMessage ? <div className="message-success">{successMessage}</div> : null}
@@ -267,13 +290,16 @@ export default function BusinessesPage() {
       <section className="section-card">
         <div className="panel-title-row">
           <h3 className="panel-title">Listado de negocios</h3>
-          <span style={{ color: "var(--muted)", fontSize: 14 }}>
-            {filteredBusinesses.length} resultados
+          <span style={{ color: "var(--muted)", fontSize: 14, fontWeight: 600 }}>
+            {filteredBusinesses.length.toString().padStart(2, '0')} NEGOCIOS REGISTRADOS
           </span>
         </div>
 
         {loading ? (
-          <p>Cargando negocios...</p>
+          <div style={{ padding: "40px", textAlign: "center" }}>
+            <div className="spinner" style={{ margin: "0 auto 16px" }}></div>
+            <p>Sincronizando negocios...</p>
+          </div>
         ) : (
           <table className="data-table">
             <thead>
@@ -281,36 +307,49 @@ export default function BusinessesPage() {
                 <th>ID</th>
                 <th>Nombre</th>
                 <th>Email</th>
-                <th>Telefono</th>
-                <th>Direccion</th>
+                <th>Teléfono</th>
+                <th>Dirección</th>
                 <th>Horario</th>
-                <th>Acciones</th>
+                <th style={{ textAlign: "right" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filteredBusinesses.length > 0 ? (
                 filteredBusinesses.map((business) => (
                   <tr key={business.id}>
-                    <td style={{ fontWeight: 600 }}>{business.id}</td>
-                    <td>{business.name}</td>
+                    <td style={{ fontWeight: 700, color: "var(--muted)" }}>#{business.id}</td>
+                    <td style={{ fontWeight: 600 }}>{business.name}</td>
                     <td>{business.email}</td>
                     <td>{business.phone}</td>
-                    <td>{business.address}</td>
+                    <td style={{ color: "var(--muted)" }}>{business.address}</td>
                     <td>
-                      {business.openingTime} - {business.closingTime}
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "4px 12px",
+                        borderRadius: "100px",
+                        background: "var(--surface-2)",
+                        fontSize: "12px",
+                        fontWeight: 700
+                      }}>
+                        {business.openingTime} — {business.closingTime}
+                      </span>
                     </td>
                     <td>
-                      <div className="table-actions">
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                         <button
-                          className="secondary-btn table-action-btn"
+                          className="secondary-btn"
                           type="button"
+                          style={{ padding: "8px 16px" }}
                           onClick={() => openEditForm(business)}
                         >
                           Editar
                         </button>
                         <button
-                          className="secondary-btn table-action-btn"
+                          className="secondary-btn"
                           type="button"
+                          style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }}
                           onClick={() => setDeleteTarget(business)}
                         >
                           Eliminar
@@ -321,7 +360,8 @@ export default function BusinessesPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="empty-table-cell">
+                  <td colSpan={7} style={{ textAlign: "center", padding: "64px", color: "var(--muted)" }}>
+                    <div style={{ fontSize: "32px", marginBottom: "12px", opacity: 0.5 }}>∅</div>
                     No hay negocios registrados.
                   </td>
                 </tr>
@@ -343,7 +383,7 @@ export default function BusinessesPage() {
           <div className="modal-card">
             <div className="modal-icon">!</div>
             <h3 className="modal-title">Eliminar negocio</h3>
-            <p className="modal-text">Seguro que quieres eliminar {deleteTarget.name}?</p>
+            <p className="modal-text">¿Seguro que quieres eliminar <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.</p>
             <div className="modal-actions">
               <button
                 className="secondary-btn"
@@ -357,8 +397,16 @@ export default function BusinessesPage() {
                 type="button"
                 onClick={confirmDelete}
                 disabled={deleting}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
               >
-                {deleting ? "Eliminando..." : "Eliminar"}
+                {deleting ? (
+                  <>
+                    <div className="spinner spinner--sm"></div>
+                    <span>Eliminando...</span>
+                  </>
+                ) : (
+                  "Eliminar"
+                )}
               </button>
             </div>
           </div>
