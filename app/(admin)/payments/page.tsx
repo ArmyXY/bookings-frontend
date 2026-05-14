@@ -62,6 +62,32 @@ function KpiCard({
   subtitle: string;
   variant?: "positive" | "warning";
 }) {
+  const icon = 
+    title.includes("Cobrado") ? (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="12" y1="1" x2="12" y2="23" />
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </svg>
+    ) :
+    title.includes("Pendientes") ? (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ) :
+    title.includes("Ultimo") ? (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+        <polyline points="17 6 23 6 23 12" />
+      </svg>
+    ) : (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    );
+
   const metaClass =
     variant === "positive"
       ? "kpi-card__meta--positive"
@@ -71,7 +97,10 @@ function KpiCard({
 
   return (
     <div className="kpi-card">
-      <p className="kpi-card__label">{title}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <p className="kpi-card__label">{title}</p>
+        <span style={{ color: "var(--primary)", opacity: 0.8 }}>{icon}</span>
+      </div>
       <h3 className="kpi-card__value">{value}</h3>
       <p className={`kpi-card__meta ${metaClass}`}>{subtitle}</p>
     </div>
@@ -179,14 +208,31 @@ export default function PaymentsPage() {
   return (
     <div className="page-stack">
       <section className="page-hero">
-        <div>
+        <div style={{ position: "relative", zIndex: 2 }}>
           <h2>Cobros</h2>
           <p>Seguimiento de cobros, clientes, negocios y citas relacionadas.</p>
         </div>
 
-        <button className="primary-btn" type="button" onClick={() => setIsModalOpen(true)}>
-          Registrar cobro
-        </button>
+        <div style={{ position: "relative", zIndex: 3 }}>
+          <button className="primary-btn" type="button" onClick={() => setIsModalOpen(true)}>
+            Registrar cobro
+          </button>
+        </div>
+
+        <div style={{
+          position: "absolute",
+          top: "20px",
+          right: "40px",
+          opacity: 0.15,
+          color: "var(--primary)",
+          pointerEvents: "none",
+          transform: "rotate(5deg)"
+        }}>
+          <svg width="140" height="140" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <line x1="12" y1="1" x2="12" y2="23" />
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+        </div>
       </section>
 
       <section className="kpi-grid">
