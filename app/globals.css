@@ -112,7 +112,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -479,6 +480,12 @@ body {
   white-space: nowrap;
 }
 
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .empty-table-cell {
   padding-top: 20px;
   padding-bottom: 20px;
@@ -500,6 +507,11 @@ body {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text);
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
 }
 
 .input--full {

@@ -25,9 +25,10 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
     async function loadAppointments() {
       try {
         const data = await getAppointments();
-        setAppointments(data.filter((appointment) => appointment.status !== "paid"));
+        setAppointments(data.filter((appointment) => appointment.status !== "completado"));
       } catch (err) {
         console.error("Failed to load appointments", err);
+        setError("No se pudieron cargar las citas pendientes.");
       }
     }
 
@@ -50,6 +51,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
         appointmentId: parseInt(selectedAppointmentId),
         amount: parseFloat(amount),
         method,
+        status: "pendiente",
       });
       onSuccess();
       onClose();
@@ -64,7 +66,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <h3 className="modal-title">Registrar Cobro</h3>
-        <p className="modal-text">Selecciona una cita y registra el pago correspondiente.</p>
+        <p className="modal-text">Selecciona una cita y registra el cobro correspondiente.</p>
 
         <form onSubmit={handleSubmit} className="form-grid">
           <div className="input--full">
@@ -80,7 +82,8 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
               <option value="">Selecciona una cita...</option>
               {appointments.map((appointment) => (
                 <option key={appointment.id} value={appointment.id}>
-                  ID: {appointment.id} - {appointment.serviceName} ({appointment.date})
+                  #{appointment.id} - {appointment.serviceName} -{" "}
+                  {appointment.customer?.name ?? `Cliente ${appointment.customerId}`}
                 </option>
               ))}
             </select>
@@ -92,6 +95,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
             </label>
             <input
               type="number"
+              min="0"
               step="0.01"
               className="input"
               placeholder="0.00"
@@ -119,12 +123,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
           {error ? <p className="input--full message-error">{error}</p> : null}
 
           <div className="input--full modal-actions" style={{ marginTop: 24 }}>
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={onClose}
-              disabled={loading}
-            >
+            <button type="button" className="secondary-btn" onClick={onClose} disabled={loading}>
               Cancelar
             </button>
             <button
