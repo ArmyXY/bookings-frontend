@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { NotificationProvider } from "@/components/providers/NotificationProvider";
 
 export const metadata: Metadata = {
   title: "Panel de reservas",
@@ -16,7 +17,9 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <ThemeProvider>
-          {children}
+          <NotificationProvider>
+            {children}
+          </NotificationProvider>
         </ThemeProvider>
       </body>
     </html>

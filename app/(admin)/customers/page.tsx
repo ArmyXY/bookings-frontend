@@ -10,6 +10,7 @@ import {
   getCustomers,
   updateCustomer,
 } from "@/lib/api";
+import { useNotifications } from "@/components/providers/NotificationProvider";
 
 const emptyForm: CreateCustomerDto = {
   name: "",
@@ -98,6 +99,8 @@ export default function CustomersPage() {
     setIsFormOpen(true);
   }
 
+  const { addNotification } = useNotifications();
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
@@ -115,6 +118,11 @@ export default function CustomersPage() {
         const created = await createCustomer(payload);
         setCustomers((prev) => [created, ...prev]);
         setSuccessMessage("Cliente creado correctamente.");
+        addNotification({
+          title: "Cliente Registrado",
+          description: `Se ha añadido a "${payload.name}" al directorio.`,
+          type: "success"
+        });
       } else {
         const updatePayload: UpdateCustomerDto = payload;
         const updated = await updateCustomer(editingId, updatePayload);
@@ -124,6 +132,11 @@ export default function CustomersPage() {
           )
         );
         setSuccessMessage("Cliente actualizado correctamente.");
+        addNotification({
+          title: "Cliente Actualizado",
+          description: `Los datos de "${payload.name}" han sido modificados.`,
+          type: "success"
+        });
       }
 
       resetForm();
@@ -132,6 +145,11 @@ export default function CustomersPage() {
       setErrorMessage(
         "No se pudo guardar el cliente. Revisa los datos o si el email ya existe."
       );
+      addNotification({
+        title: "Error de Cliente",
+        description: "Hubo un fallo al intentar guardar los datos del cliente.",
+        type: "error"
+      });
     } finally {
       setSaving(false);
     }
@@ -146,13 +164,24 @@ export default function CustomersPage() {
 
     try {
       await deleteCustomer(deleteTarget.id);
+      const name = deleteTarget.name;
       setCustomers((prev) =>
         prev.filter((customer) => customer.id !== deleteTarget.id)
       );
       setDeleteTarget(null);
       setSuccessMessage("Cliente eliminado correctamente.");
+      addNotification({
+        title: "Cliente Eliminado",
+        description: `El cliente "${name}" ha sido borrado.`,
+        type: "info"
+      });
     } catch {
       setErrorMessage("No se pudo eliminar el cliente.");
+      addNotification({
+        title: "Error al Eliminar",
+        description: "No se pudo borrar el cliente del sistema.",
+        type: "error"
+      });
     } finally {
       setDeleting(false);
     }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import type { CreateBusinessDto, UpdateBusinessDto } from "@/lib/api";
 import type { Business } from "@/lib/types";
+import { useNotifications } from "@/components/providers/NotificationProvider";
 
 const emptyForm: CreateBusinessDto = {
   name: "",
@@ -101,7 +102,9 @@ export default function BusinessesPage() {
     setIsFormOpen(false);
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    const { addNotification } = useNotifications();
+
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setErrorMessage("");
@@ -122,17 +125,32 @@ export default function BusinessesPage() {
         const created = await createBusiness(payload);
         setBusinesses((prev) => [created, ...prev]);
         setSuccessMessage("Negocio creado correctamente.");
+        addNotification({
+          title: "Negocio Creado",
+          description: `Se ha registrado el negocio "${payload.name}" correctamente.`,
+          type: "success"
+        });
       } else {
         const updated = await updateBusiness(editingId, payload as UpdateBusinessDto);
         setBusinesses((prev) =>
           prev.map((business) => (business.id === editingId ? updated : business))
         );
         setSuccessMessage("Negocio actualizado correctamente.");
+        addNotification({
+          title: "Negocio Actualizado",
+          description: `Los datos de "${payload.name}" han sido modificados.`,
+          type: "success"
+        });
       }
 
       closeForm();
     } catch {
       setErrorMessage("No se pudo guardar el negocio. Revisa los datos.");
+      addNotification({
+        title: "Error en Negocio",
+        description: "Hubo un fallo al intentar guardar el negocio.",
+        type: "error"
+      });
     } finally {
       setSaving(false);
     }
@@ -147,13 +165,24 @@ export default function BusinessesPage() {
 
     try {
       await deleteBusiness(deleteTarget.id);
+      const name = deleteTarget.name;
       setBusinesses((prev) =>
         prev.filter((business) => business.id !== deleteTarget.id)
       );
       setDeleteTarget(null);
       setSuccessMessage("Negocio eliminado correctamente.");
+      addNotification({
+        title: "Negocio Eliminado",
+        description: `El negocio "${name}" ha sido borrado del sistema.`,
+        type: "info"
+      });
     } catch {
       setErrorMessage("No se pudo eliminar el negocio. Puede tener reservas relacionadas.");
+      addNotification({
+        title: "Error al Eliminar",
+        description: "No se pudo borrar el negocio.",
+        type: "error"
+      });
     } finally {
       setDeleting(false);
     }

@@ -15,6 +15,7 @@ import {
   updateAppointment,
 } from "@/lib/api";
 import type { Business, Customer } from "@/lib/types";
+import { useNotifications } from "@/components/providers/NotificationProvider";
 
 const statusLabels: Record<BookingStatus, string> = {
   pendiente: "Pendiente",
@@ -192,6 +193,8 @@ export default function BookingsClient({
     setDeleteTargetId(null);
   }
 
+  const { addNotification } = useNotifications();
+
   async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoadingCreate(true);
@@ -204,8 +207,18 @@ export default function BookingsClient({
       resetCreateForm();
       setIsCreateOpen(false);
       setSuccessMessage("Reserva creada correctamente.");
+      addNotification({
+        title: "Reserva Creada",
+        description: `Nueva reserva para "${created.serviceName}" registrada con éxito.`,
+        type: "success"
+      });
     } catch {
       setErrorMessage("No se pudo crear la reserva. Revisa horario, cliente y negocio.");
+      addNotification({
+        title: "Error en Reserva",
+        description: "No se pudo registrar la nueva reserva.",
+        type: "error"
+      });
     } finally {
       setLoadingCreate(false);
     }
@@ -235,8 +248,18 @@ export default function BookingsClient({
       setEditingBookingId(null);
       resetEditForm();
       setSuccessMessage("Reserva actualizada correctamente.");
+      addNotification({
+        title: "Reserva Modificada",
+        description: `La reserva #${editingBookingId} ha sido actualizada.`,
+        type: "success"
+      });
     } catch {
       setErrorMessage("No se pudo actualizar la reserva.");
+      addNotification({
+        title: "Error al Editar",
+        description: "Hubo un problema al guardar los cambios de la reserva.",
+        type: "error"
+      });
     } finally {
       setLoadingEdit(false);
     }
@@ -253,8 +276,18 @@ export default function BookingsClient({
         prev.map((booking) => (booking.id === id ? { ...booking, ...updated } : booking))
       );
       setSuccessMessage("Estado actualizado correctamente.");
+      addNotification({
+        title: "Estado Cambiado",
+        description: `Reserva #${id} marcada como "${statusLabels[status]}".`,
+        type: "info"
+      });
     } catch {
       setErrorMessage("No se pudo actualizar el estado de la reserva.");
+      addNotification({
+        title: "Error de Estado",
+        description: "No se pudo cambiar el estado de la reserva.",
+        type: "error"
+      });
     } finally {
       setUpdatingStatusId(null);
     }
@@ -272,9 +305,19 @@ export default function BookingsClient({
       setBookings((prev) => prev.filter((booking) => booking.id !== deleteTargetId));
       if (editingBookingId === deleteTargetId) closeEditForm();
       setSuccessMessage("Reserva eliminada correctamente.");
+      addNotification({
+        title: "Reserva Eliminada",
+        description: `La reserva #${deleteTargetId} ha sido eliminada.`,
+        type: "info"
+      });
       closeDeleteModal();
     } catch {
       setErrorMessage("No se pudo eliminar la reserva.");
+      addNotification({
+        title: "Error al Eliminar",
+        description: "No se pudo borrar la reserva seleccionada.",
+        type: "error"
+      });
     } finally {
       setDeletingBookingId(null);
     }

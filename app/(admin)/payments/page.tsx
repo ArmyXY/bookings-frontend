@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import PaymentModal from "@/components/payments/PaymentModal";
 import { deletePayment, getPayments, updatePayment } from "@/lib/api";
 import { Payment, PaymentMethod, PaymentStatus } from "@/lib/types";
+import { useNotifications } from "@/components/providers/NotificationProvider";
 
 const paymentStatusLabels: Record<PaymentStatus, string> = {
   pendiente: "Pendiente",
@@ -174,6 +175,8 @@ export default function PaymentsPage() {
     return payments.filter((payment) => matchesStatusFilter(payment, statusFilter));
   }, [payments, statusFilter]);
 
+  const { addNotification } = useNotifications();
+
   const markPaymentAsPaid = async (paymentId: number) => {
     setUpdatingPaymentId(paymentId);
     setErrorMessage("");
@@ -187,9 +190,19 @@ export default function PaymentsPage() {
         )
       );
       setSuccessMessage("Cobro marcado como pagado.");
+      addNotification({
+        title: "Cobro Realizado",
+        description: `El cobro #${paymentId} ha sido marcado como pagado.`,
+        type: "success"
+      });
     } catch (err) {
       console.error("Failed to update payment", err);
       setErrorMessage("No se pudo marcar el cobro como pagado.");
+      addNotification({
+        title: "Error en Cobro",
+        description: `No se pudo actualizar el estado del cobro #${paymentId}.`,
+        type: "error"
+      });
     } finally {
       setUpdatingPaymentId(null);
     }
@@ -206,8 +219,18 @@ export default function PaymentsPage() {
         currentPayments.filter((payment) => payment.id !== paymentId)
       );
       setSuccessMessage("Cobro eliminado correctamente.");
+      addNotification({
+        title: "Cobro Eliminado",
+        description: `Se ha borrado el registro de cobro #${paymentId}.`,
+        type: "info"
+      });
     } catch {
       setErrorMessage("No se pudo eliminar el cobro.");
+      addNotification({
+        title: "Error al Borrar",
+        description: "No se pudo eliminar el cobro solicitado.",
+        type: "error"
+      });
     } finally {
       setDeletingPaymentId(null);
     }
