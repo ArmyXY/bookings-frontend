@@ -1,18 +1,24 @@
+"use client";
+
+import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import RouteLoadingOverlay from "@/components/layout/RouteLoadingOverlay";
-import CollapsiblePanels from "@/components/layout/CollapsiblePanels";
+import { useGsapButtons } from "@/hooks/useGsapButtons";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  useGsapButtons();
+
+
   return (
-    <div className="admin-shell">
+    <div className={`admin-shell ${isCollapsed ? "admin-shell--collapsed" : ""}`}>
       <RouteLoadingOverlay />
-      <CollapsiblePanels />
-      <Sidebar />
+      <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
 
       <div className="admin-main">
         <Header />
