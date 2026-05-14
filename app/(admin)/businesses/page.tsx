@@ -160,7 +160,7 @@ export default function BusinessesPage() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-transition">
       <section className="page-hero">
         <div style={{ position: "relative", zIndex: 2 }}>
           <h2>Negocios</h2>
@@ -187,6 +187,29 @@ export default function BusinessesPage() {
             <polyline points="9 22 9 12 15 12 15 22" />
             <path d="M9 2h6" />
           </svg>
+        </div>
+      </section>
+
+      <section className="kpi-grid">
+        <div className="kpi-card">
+          <p className="kpi-card__label">Total Negocios</p>
+          <h3 className="kpi-card__value">{businesses.length}</h3>
+          <p className="kpi-card__meta">Sedes registradas</p>
+        </div>
+        <div className="kpi-card">
+          <p className="kpi-card__label">Activos hoy</p>
+          <h3 className="kpi-card__value">{businesses.length}</h3>
+          <p className="kpi-card__meta kpi-card__meta--positive">Operativos</p>
+        </div>
+        <div className="kpi-card" style={{ opacity: 0.5 }}>
+          <p className="kpi-card__label">Próxima apertura</p>
+          <h3 className="kpi-card__value">09:00</h3>
+          <p className="kpi-card__meta">Horario estándar</p>
+        </div>
+        <div className="kpi-card" style={{ opacity: 0.5 }}>
+          <p className="kpi-card__label">Cierre promedio</p>
+          <h3 className="kpi-card__value">20:00</h3>
+          <p className="kpi-card__meta">Horario estándar</p>
         </div>
       </section>
 

@@ -63,7 +63,7 @@ function KpiCard({
   variant?: "positive" | "warning";
 }) {
   const icon = 
-    title.includes("Cobrado") ? (
+    title.includes("Cobrado") || title.includes("por cobrar") ? (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <line x1="12" y1="1" x2="12" y2="23" />
         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -162,6 +162,14 @@ export default function PaymentsPage() {
     [payments]
   );
 
+  const totalPending = useMemo(
+    () =>
+      payments
+        .filter((payment) => payment.status === "pendiente")
+        .reduce((sum, payment) => sum + Number(payment.amount), 0),
+    [payments]
+  );
+
   const filteredPayments = useMemo(() => {
     return payments.filter((payment) => matchesStatusFilter(payment, statusFilter));
   }, [payments, statusFilter]);
@@ -239,7 +247,7 @@ export default function PaymentsPage() {
         <KpiCard
           title="Cobrado total"
           value={formatCurrency(totalCollected)}
-          subtitle={`${payments.length} operaciones registradas`}
+          subtitle={`${payments.filter(p => p.status === 'pagado').length} operaciones`}
           variant="positive"
         />
         <KpiCard
@@ -253,7 +261,12 @@ export default function PaymentsPage() {
           value={payments.length > 0 ? formatCurrency(Number(payments[0].amount)) : "--"}
           subtitle="Volumen mas reciente"
         />
-        <KpiCard title="Estado" value="Sincronizado" subtitle="Conectado a la BD" />
+        <KpiCard 
+          title="Total por cobrar" 
+          value={formatCurrency(totalPending)} 
+          subtitle="Deuda pendiente" 
+          variant="warning"
+        />
       </section>
 
       {successMessage ? <div className="message-success">{successMessage}</div> : null}

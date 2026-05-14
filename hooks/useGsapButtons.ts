@@ -8,8 +8,10 @@ export function useGsapButtons() {
     // We'll store the handlers so we can remove them if needed, though with MutationObserver it's tricky.
     // Instead, we just mark buttons we've already attached to.
     
+    const attachedNodes = new WeakMap<Element, boolean>();
+    
     const attachAnimations = (node: Element) => {
-      if (node.hasAttribute("data-gsap-attached")) return;
+      if (attachedNodes.has(node)) return;
       
       const onMouseEnter = () => {
         gsap.to(node, { scale: 1.05, duration: 0.2, ease: "power2.out" });
@@ -29,7 +31,7 @@ export function useGsapButtons() {
       node.addEventListener("mousedown", onMouseDown);
       node.addEventListener("mouseup", onMouseUp);
 
-      node.setAttribute("data-gsap-attached", "true");
+      attachedNodes.set(node, true);
     };
 
     const attachToExisting = () => {
@@ -37,8 +39,10 @@ export function useGsapButtons() {
       buttons.forEach(attachAnimations);
     };
 
-    // Initial attach
-    attachToExisting();
+    // Initial attach - Delaying to ensure hydration is complete
+    const timeoutId = setTimeout(() => {
+      attachToExisting();
+    }, 0);
 
     // Observe DOM for new buttons
     const observer = new MutationObserver((mutations) => {
@@ -52,6 +56,7 @@ export function useGsapButtons() {
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      clearTimeout(timeoutId);
       observer.disconnect();
     };
   }, []);
