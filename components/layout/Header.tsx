@@ -2,6 +2,7 @@
 
 import { useTheme } from "@/components/ThemeProvider";
 import NotificationDropdown from "./NotificationDropdown";
+import UserMenu from "./UserMenu";
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
@@ -52,7 +53,7 @@ export default function Header() {
             </svg>
           )}
         </button>
-        <div className="admin-avatar">JS</div>
+        <UserMenu />
       </div>
     </header>
   );
