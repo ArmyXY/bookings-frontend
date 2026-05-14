@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const menuItems = [
-  { label: "Dashboard", href: "/dashboard", icon: "◫" },
-  { label: "Bookings", href: "/bookings", icon: "☰" },
-  { label: "Customers", href: "/customers", icon: "◎" },
-  { label: "Payments", href: "/payments", icon: "◌" },
+  { label: "Panel", href: "/dashboard", icon: "□" },
+  { label: "Reservas", href: "/bookings", icon: "☰" },
+  { label: "Clientes", href: "/customers", icon: "●" },
+  { label: "Negocios", href: "/businesses", icon: "◆" },
+  { label: "Cobros", href: "/payments", icon: "○" },
 ];
 
 export default function Sidebar() {
@@ -17,7 +18,7 @@ export default function Sidebar() {
     <aside className="admin-sidebar">
       <div className="admin-sidebar__brand">
         <h2 className="admin-sidebar__title">BookFlow</h2>
-        <p className="admin-sidebar__subtitle">Admin workspace</p>
+        <p className="admin-sidebar__subtitle">Area de administracion</p>
       </div>
 
       <nav className="admin-sidebar__nav">

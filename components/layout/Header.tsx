@@ -1,16 +1,30 @@
+"use client";
+
+import { useTheme } from "@/components/ThemeProvider";
+
 export default function Header() {
-    return (
-      <header
-        style={{
-          backgroundColor: "#ffffff",
-          borderBottom: "1px solid #e5e7eb",
-          padding: "20px 24px",
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: "28px" }}>Bookings Admin</h1>
-        <p style={{ margin: "6px 0 0", color: "#6b7280", fontSize: "14px" }}>
-          Plataforma de gestión de reservas y cobros
+  const { theme, toggleTheme } = useTheme();
+
+  return (
+    <header className="admin-header">
+      <div>
+        <h1 className="admin-header__title">Bookings Admin</h1>
+        <p className="admin-header__subtitle">
+          Plataforma de gestion de reservas y cobros
         </p>
-      </header>
-    );
-  }
+      </div>
+
+      <div className="admin-header__actions">
+        <button
+          onClick={toggleTheme}
+          className="secondary-btn theme-toggle"
+          title={theme === "light" ? "Modo oscuro" : "Modo claro"}
+          type="button"
+        >
+          {theme === "light" ? "◐" : "○"}
+        </button>
+        <div className="admin-avatar">A</div>
+      </div>
+    </header>
+  );
+}

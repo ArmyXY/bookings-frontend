@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   Booking,
   BookingStatus,
@@ -10,93 +10,135 @@ import type {
 import {
   createAppointment,
   deleteAppointment,
+  getBusinesses,
+  getCustomers,
   updateAppointment,
 } from "@/lib/api";
+import type { Business, Customer } from "@/lib/types";
+
+const statusLabels: Record<BookingStatus, string> = {
+  pendiente: "Pendiente",
+  confirmado: "Confirmada",
+  completado: "Completada",
+  cancelado: "Cancelada",
+};
+
+const emptyForm: CreateBookingDto = {
+  date: "",
+  time: "",
+  status: "pendiente",
+  customerId: 0,
+  businessId: 0,
+  serviceName: "",
+};
 
 function StatusBadge({ status }: { status: BookingStatus }) {
-  const label =
-    status === "pending"
-      ? "Pendiente"
-      : status === "confirmed"
-        ? "Confirmada"
-        : "Pagada";
+  const badgeStatus =
+    status === "confirmado" || status === "completado"
+      ? "confirmed"
+      : status === "cancelado"
+        ? "paid"
+        : "pending";
 
-  return <span className={`badge badge--${status}`}>{label}</span>;
+  return <span className={`badge badge--${badgeStatus}`}>{statusLabels[status]}</span>;
 }
 
 function formatDate(date: string) {
-  try {
-    return new Intl.DateTimeFormat("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(new Date(date));
-  } catch {
-    return date;
-  }
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
+function getCustomerName(booking: Booking) {
+  return booking.customer?.name ?? `Cliente #${booking.customerId}`;
+}
+
+function getBusinessName(booking: Booking) {
+  return booking.business?.name ?? `Negocio #${booking.businessId}`;
 }
 
 export default function BookingsClient({
   initialBookings,
+  initialError = "",
 }: {
   initialBookings: Booking[];
+  initialError?: string;
 }) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-
-  const emptyForm: CreateBookingDto = {
-    date: "",
-    time: "",
-    status: "pending",
-    customerId: 1,
-    businessId: 1,
-    serviceName: "",
-  };
-
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [createForm, setCreateForm] = useState<CreateBookingDto>(emptyForm);
   const [editForm, setEditForm] = useState<CreateBookingDto>(emptyForm);
-
   const [statusFilter, setStatusFilter] = useState<"all" | BookingStatus>("all");
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState(initialError);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadRelations() {
+      try {
+        const [customersData, businessesData] = await Promise.all([
+          getCustomers(),
+          getBusinesses(),
+        ]);
+        setCustomers(customersData);
+        setBusinesses(businessesData);
+        setCreateForm((prev) => ({
+          ...prev,
+          customerId: customersData[0]?.id ?? 0,
+          businessId: businessesData[0]?.id ?? 0,
+        }));
+      } catch {
+        setErrorMessage("No se pudieron cargar clientes o negocios para las reservas.");
+      }
+    }
+
+    loadRelations();
+  }, []);
 
   const filteredBookings = useMemo(() => {
     if (statusFilter === "all") return bookings;
     return bookings.filter((booking) => booking.status === statusFilter);
   }, [bookings, statusFilter]);
 
-  const totalCount = bookings.length;
-  const pendingCount = bookings.filter((b) => b.status === "pending").length;
-  const confirmedCount = bookings.filter((b) => b.status === "confirmed").length;
-  const paidCount = bookings.filter((b) => b.status === "paid").length;
+  const counts = useMemo(
+    () => ({
+      total: bookings.length,
+      pending: bookings.filter((booking) => booking.status === "pendiente").length,
+      confirmed: bookings.filter((booking) => booking.status === "confirmado").length,
+      paid: bookings.filter((booking) => booking.status === "completado").length,
+    }),
+    [bookings]
+  );
 
   function updateCreateForm<K extends keyof CreateBookingDto>(
     key: K,
     value: CreateBookingDto[K]
   ) {
-    setCreateForm((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setCreateForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function updateEditForm<K extends keyof CreateBookingDto>(
     key: K,
     value: CreateBookingDto[K]
   ) {
-    setEditForm((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setEditForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function resetCreateForm() {
-    setCreateForm(emptyForm);
+    setCreateForm({
+      ...emptyForm,
+      customerId: customers[0]?.id ?? 0,
+      businessId: businesses[0]?.id ?? 0,
+    });
   }
 
   function resetEditForm() {
@@ -163,7 +205,7 @@ export default function BookingsClient({
       setIsCreateOpen(false);
       setSuccessMessage("Reserva creada correctamente.");
     } catch {
-      setErrorMessage("No se pudo crear la reserva. Revisa los datos o el backend.");
+      setErrorMessage("No se pudo crear la reserva. Revisa horario, cliente y negocio.");
     } finally {
       setLoadingCreate(false);
     }
@@ -171,7 +213,6 @@ export default function BookingsClient({
 
   async function handleEditSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
     if (!editingBookingId) return;
 
     setLoadingEdit(true);
@@ -187,15 +228,10 @@ export default function BookingsClient({
         businessId: editForm.businessId,
         serviceName: editForm.serviceName,
       };
-
       const updated = await updateAppointment(editingBookingId, payload);
-
       setBookings((prev) =>
-        prev.map((booking) =>
-          booking.id === editingBookingId ? updated : booking
-        )
+        prev.map((booking) => (booking.id === editingBookingId ? updated : booking))
       );
-
       setEditingBookingId(null);
       resetEditForm();
       setSuccessMessage("Reserva actualizada correctamente.");
@@ -203,6 +239,24 @@ export default function BookingsClient({
       setErrorMessage("No se pudo actualizar la reserva.");
     } finally {
       setLoadingEdit(false);
+    }
+  }
+
+  async function updateBookingStatus(id: number, status: BookingStatus) {
+    setUpdatingStatusId(id);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const updated = await updateAppointment(id, { status });
+      setBookings((prev) =>
+        prev.map((booking) => (booking.id === id ? { ...booking, ...updated } : booking))
+      );
+      setSuccessMessage("Estado actualizado correctamente.");
+    } catch {
+      setErrorMessage("No se pudo actualizar el estado de la reserva.");
+    } finally {
+      setUpdatingStatusId(null);
     }
   }
 
@@ -216,11 +270,7 @@ export default function BookingsClient({
     try {
       await deleteAppointment(deleteTargetId);
       setBookings((prev) => prev.filter((booking) => booking.id !== deleteTargetId));
-
-      if (editingBookingId === deleteTargetId) {
-        closeEditForm();
-      }
-
+      if (editingBookingId === deleteTargetId) closeEditForm();
       setSuccessMessage("Reserva eliminada correctamente.");
       closeDeleteModal();
     } catch {
@@ -230,12 +280,81 @@ export default function BookingsClient({
     }
   }
 
+  function renderBookingForm(
+    form: CreateBookingDto,
+    updateForm: <K extends keyof CreateBookingDto>(key: K, value: CreateBookingDto[K]) => void
+  ) {
+    return (
+      <div className="form-grid">
+        <input
+          className="input"
+          type="date"
+          value={form.date}
+          onChange={(e) => updateForm("date", e.target.value)}
+          required
+        />
+        <input
+          className="input"
+          type="time"
+          value={form.time}
+          onChange={(e) => updateForm("time", e.target.value)}
+          required
+        />
+        <select
+          className="select"
+          value={form.status}
+          onChange={(e) => updateForm("status", e.target.value as BookingStatus)}
+        >
+          {Object.entries(statusLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="select"
+          value={form.customerId}
+          onChange={(e) => updateForm("customerId", Number(e.target.value))}
+          required
+        >
+          <option value={0}>Selecciona cliente</option>
+          {customers.map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="select"
+          value={form.businessId}
+          onChange={(e) => updateForm("businessId", Number(e.target.value))}
+          required
+        >
+          <option value={0}>Selecciona negocio</option>
+          {businesses.map((business) => (
+            <option key={business.id} value={business.id}>
+              {business.name} ({business.openingTime}-{business.closingTime})
+            </option>
+          ))}
+        </select>
+        <input
+          className="input input--full"
+          type="text"
+          value={form.serviceName}
+          onChange={(e) => updateForm("serviceName", e.target.value)}
+          placeholder="Servicio"
+          required
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="page-stack">
       <section className="page-hero">
         <div>
-          <h2>Bookings list</h2>
-          <p>Gestión de reservas conectada con la API.</p>
+          <h2>Listado de reservas</h2>
+          <p>Gestion de reservas con cliente, negocio y pagos relacionados.</p>
         </div>
 
         <button className="primary-btn" type="button" onClick={openCreateForm}>
@@ -246,34 +365,27 @@ export default function BookingsClient({
       <section className="kpi-grid">
         <div className="kpi-card">
           <p className="kpi-card__label">Total reservas</p>
-          <h3 className="kpi-card__value">{totalCount}</h3>
+          <h3 className="kpi-card__value">{counts.total}</h3>
           <p className="kpi-card__meta">Registros disponibles</p>
         </div>
-
         <div className="kpi-card">
           <p className="kpi-card__label">Pendientes</p>
-          <h3 className="kpi-card__value">{pendingCount}</h3>
-          <p className="kpi-card__meta kpi-card__meta--warning">
-            Requieren seguimiento
-          </p>
+          <h3 className="kpi-card__value">{counts.pending}</h3>
+          <p className="kpi-card__meta kpi-card__meta--warning">Requieren seguimiento</p>
         </div>
-
         <div className="kpi-card">
           <p className="kpi-card__label">Confirmadas</p>
-          <h3 className="kpi-card__value">{confirmedCount}</h3>
-          <p className="kpi-card__meta kpi-card__meta--positive">
-            Estado activo
-          </p>
+          <h3 className="kpi-card__value">{counts.confirmed}</h3>
+          <p className="kpi-card__meta kpi-card__meta--positive">Estado activo</p>
         </div>
-
         <div className="kpi-card">
-          <p className="kpi-card__label">Pagadas</p>
-          <h3 className="kpi-card__value">{paidCount}</h3>
+          <p className="kpi-card__label">Completadas</p>
+          <h3 className="kpi-card__value">{counts.paid}</h3>
           <p className="kpi-card__meta">Reservas cerradas</p>
         </div>
       </section>
 
-      {isCreateOpen && (
+      {isCreateOpen ? (
         <section className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Nueva reserva</h3>
@@ -283,66 +395,8 @@ export default function BookingsClient({
           </div>
 
           <form onSubmit={handleCreateSubmit} className="page-stack" style={{ gap: 16 }}>
-            <div className="form-grid">
-              <input
-                className="input"
-                type="date"
-                value={createForm.date}
-                onChange={(e) => updateCreateForm("date", e.target.value)}
-                required
-              />
-              <input
-                className="input"
-                type="time"
-                value={createForm.time}
-                onChange={(e) => updateCreateForm("time", e.target.value)}
-                required
-              />
-              <select
-                className="select"
-                value={createForm.status}
-                onChange={(e) =>
-                  updateCreateForm("status", e.target.value as BookingStatus)
-                }
-              >
-                <option value="pending">Pendiente</option>
-                <option value="confirmed">Confirmada</option>
-                <option value="paid">Pagada</option>
-              </select>
-              <input
-                className="input"
-                type="number"
-                min={1}
-                value={createForm.customerId}
-                onChange={(e) =>
-                  updateCreateForm("customerId", Number(e.target.value))
-                }
-                placeholder="Customer ID"
-                required
-              />
-              <input
-                className="input"
-                type="number"
-                min={1}
-                value={createForm.businessId}
-                onChange={(e) =>
-                  updateCreateForm("businessId", Number(e.target.value))
-                }
-                placeholder="Business ID"
-                required
-              />
-              <input
-                className="input input--full"
-                type="text"
-                value={createForm.serviceName}
-                onChange={(e) => updateCreateForm("serviceName", e.target.value)}
-                placeholder="Servicio"
-                required
-              />
-            </div>
-
+            {renderBookingForm(createForm, updateCreateForm)}
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
-
             <div className="message-row">
               <button className="primary-btn" type="submit" disabled={loadingCreate}>
                 {loadingCreate ? "Guardando..." : "Crear reserva"}
@@ -350,9 +404,9 @@ export default function BookingsClient({
             </div>
           </form>
         </section>
-      )}
+      ) : null}
 
-      {editingBookingId !== null && (
+      {editingBookingId !== null ? (
         <section className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Editar reserva #{editingBookingId}</h3>
@@ -362,66 +416,8 @@ export default function BookingsClient({
           </div>
 
           <form onSubmit={handleEditSubmit} className="page-stack" style={{ gap: 16 }}>
-            <div className="form-grid">
-              <input
-                className="input"
-                type="date"
-                value={editForm.date}
-                onChange={(e) => updateEditForm("date", e.target.value)}
-                required
-              />
-              <input
-                className="input"
-                type="time"
-                value={editForm.time}
-                onChange={(e) => updateEditForm("time", e.target.value)}
-                required
-              />
-              <select
-                className="select"
-                value={editForm.status}
-                onChange={(e) =>
-                  updateEditForm("status", e.target.value as BookingStatus)
-                }
-              >
-                <option value="pending">Pendiente</option>
-                <option value="confirmed">Confirmada</option>
-                <option value="paid">Pagada</option>
-              </select>
-              <input
-                className="input"
-                type="number"
-                min={1}
-                value={editForm.customerId}
-                onChange={(e) =>
-                  updateEditForm("customerId", Number(e.target.value))
-                }
-                placeholder="Customer ID"
-                required
-              />
-              <input
-                className="input"
-                type="number"
-                min={1}
-                value={editForm.businessId}
-                onChange={(e) =>
-                  updateEditForm("businessId", Number(e.target.value))
-                }
-                placeholder="Business ID"
-                required
-              />
-              <input
-                className="input input--full"
-                type="text"
-                value={editForm.serviceName}
-                onChange={(e) => updateEditForm("serviceName", e.target.value)}
-                placeholder="Servicio"
-                required
-              />
-            </div>
-
+            {renderBookingForm(editForm, updateEditForm)}
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
-
             <div className="message-row">
               <button className="primary-btn" type="submit" disabled={loadingEdit}>
                 {loadingEdit ? "Guardando..." : "Guardar cambios"}
@@ -429,33 +425,25 @@ export default function BookingsClient({
             </div>
           </form>
         </section>
-      )}
+      ) : null}
 
-      {deleteTargetId !== null && (
+      {deleteTargetId !== null ? (
         <div
           className="modal-backdrop"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="delete-modal-title"
-          aria-describedby="delete-modal-description"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeDeleteModal();
           }}
         >
           <div className="modal-card">
             <div className="modal-icon">!</div>
-            <h3 id="delete-modal-title" className="modal-title">
-              Eliminar reserva
-            </h3>
-            <p id="delete-modal-description" className="modal-text">
-              ¿Seguro que quieres eliminar la reserva #{deleteTargetId}? Esta acción no se puede deshacer.
+            <h3 className="modal-title">Eliminar reserva</h3>
+            <p className="modal-text">
+              Seguro que quieres eliminar la reserva #{deleteTargetId}? Esta accion no se puede deshacer.
             </p>
             <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={closeDeleteModal}
-              >
+              <button type="button" className="secondary-btn" onClick={closeDeleteModal}>
                 Cancelar
               </button>
               <button
@@ -469,21 +457,32 @@ export default function BookingsClient({
             </div>
           </div>
         </div>
-      )}
+      ) : null}
+
+      {successMessage ? <div className="message-success">{successMessage}</div> : null}
+      {errorMessage && !isCreateOpen && editingBookingId === null ? (
+        <div className="message-error">{errorMessage}</div>
+      ) : null}
 
       <section className="section-card">
         <div className="panel-title-row">
           <h3 className="panel-title">Reservas registradas</h3>
           <div className="filter-row">
-            <button type="button" className="filter-pill" onClick={() => setStatusFilter("all")}>Todas</button>
-            <button type="button" className="filter-pill" onClick={() => setStatusFilter("pending")}>Pendientes</button>
-            <button type="button" className="filter-pill" onClick={() => setStatusFilter("confirmed")}>Confirmadas</button>
-            <button type="button" className="filter-pill" onClick={() => setStatusFilter("paid")}>Pagadas</button>
+            <button type="button" className="filter-pill" onClick={() => setStatusFilter("all")}>
+              Todas
+            </button>
+            {Object.entries(statusLabels).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className="filter-pill"
+                onClick={() => setStatusFilter(value as BookingStatus)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
-
-        {successMessage ? <div className="message-success" style={{ marginBottom: 12 }}>{successMessage}</div> : null}
-        {errorMessage ? <div className="message-error" style={{ marginBottom: 12 }}>{errorMessage}</div> : null}
 
         <table className="data-table">
           <thead>
@@ -492,34 +491,72 @@ export default function BookingsClient({
               <th>Fecha</th>
               <th>Hora</th>
               <th>Servicio</th>
-              <th>Customer</th>
-              <th>Business</th>
+              <th>Cliente</th>
+              <th>Negocio</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {filteredBookings.map((booking) => (
-              <tr key={booking.id}>
-                <td style={{ fontWeight: 600 }}>{booking.id}</td>
-                <td>{formatDate(booking.date)}</td>
-                <td>{booking.time}</td>
-                <td>{booking.serviceName}</td>
-                <td>{booking.customerId}</td>
-                <td>{booking.businessId}</td>
-                <td><StatusBadge status={booking.status} /></td>
-                <td>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button type="button" className="secondary-btn" onClick={() => openEditForm(booking)}>
-                      Editar
-                    </button>
-                    <button type="button" className="secondary-btn" onClick={() => openDeleteModal(booking.id)}>
-                      Eliminar
-                    </button>
-                  </div>
+            {filteredBookings.length > 0 ? (
+              filteredBookings.map((booking) => (
+                <tr key={booking.id}>
+                  <td style={{ fontWeight: 600 }}>{booking.id}</td>
+                  <td>{formatDate(booking.date)}</td>
+                  <td>{booking.time}</td>
+                  <td>{booking.serviceName}</td>
+                  <td>{getCustomerName(booking)}</td>
+                  <td>{getBusinessName(booking)}</td>
+                  <td>
+                    <StatusBadge status={booking.status} />
+                  </td>
+                  <td>
+                    <div className="table-actions">
+                      {booking.status === "pendiente" ? (
+                        <button
+                          type="button"
+                          className="secondary-btn table-action-btn"
+                          onClick={() => updateBookingStatus(booking.id, "confirmado")}
+                          disabled={updatingStatusId === booking.id}
+                        >
+                          Confirmar
+                        </button>
+                      ) : null}
+                      {booking.status !== "completado" ? (
+                        <button
+                          type="button"
+                          className="secondary-btn table-action-btn"
+                          onClick={() => updateBookingStatus(booking.id, "completado")}
+                          disabled={updatingStatusId === booking.id}
+                        >
+                          Completar
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="secondary-btn table-action-btn"
+                        onClick={() => openEditForm(booking)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-btn table-action-btn"
+                        onClick={() => openDeleteModal(booking.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="empty-table-cell">
+                  No hay reservas registradas.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </section>
