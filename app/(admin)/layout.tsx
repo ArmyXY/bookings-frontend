@@ -1,6 +1,7 @@
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import RouteLoadingOverlay from "@/components/layout/RouteLoadingOverlay";
+import CollapsiblePanels from "@/components/layout/CollapsiblePanels";
 
 export default function AdminLayout({
   children,
@@ -10,6 +11,7 @@ export default function AdminLayout({
   return (
     <div className="admin-shell">
       <RouteLoadingOverlay />
+      <CollapsiblePanels />
       <Sidebar />
 
       <div className="admin-main">

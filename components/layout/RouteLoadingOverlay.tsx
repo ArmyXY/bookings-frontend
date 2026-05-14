@@ -24,8 +24,14 @@ function TimedRouteLoading() {
 
   return (
     <div className="route-loading">
+      <div className="route-loading__shop" aria-hidden="true">
+        <span className="route-loading__slat" />
+        <span className="route-loading__slat" />
+        <span className="route-loading__slat" />
+        <span className="route-loading__slat" />
+        <span className="route-loading__handle" />
+      </div>
       <div className="route-loading__card">
-        <div className="route-loading__spinner" />
         <p className="route-loading__title">Cargando...</p>
       </div>
     </div>
