@@ -19,6 +19,23 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
   transferencia: "Transferencia",
 };
 
+const paymentFilterStatuses: { label: string; value: PaymentStatus }[] = [
+  { label: "Pendientes", value: "pendiente" },
+  { label: "Pagados", value: "pagado" },
+  { label: "Devueltos", value: "devolucion" },
+];
+
+function isRefundedStatus(status: PaymentStatus) {
+  return status !== "pendiente" && status !== "pagado";
+}
+
+function matchesStatusFilter(payment: Payment, filter: "all" | PaymentStatus) {
+  if (filter === "all") return true;
+  if (filter === "devolucion") return isRefundedStatus(payment.status);
+
+  return payment.status === filter;
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
@@ -77,6 +94,7 @@ function getBusinessName(payment: Payment) {
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [statusFilter, setStatusFilter] = useState<"all" | PaymentStatus>("all");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<number | null>(null);
@@ -114,6 +132,10 @@ export default function PaymentsPage() {
     () => payments.filter((payment) => payment.status === "pendiente").length,
     [payments]
   );
+
+  const filteredPayments = useMemo(() => {
+    return payments.filter((payment) => matchesStatusFilter(payment, statusFilter));
+  }, [payments, statusFilter]);
 
   const markPaymentAsPaid = async (paymentId: number) => {
     setUpdatingPaymentId(paymentId);
@@ -194,10 +216,26 @@ export default function PaymentsPage() {
       <section className="section-card">
         <div className="panel-title-row">
           <h3 className="panel-title">Listado de cobros</h3>
-          <span style={{ color: "var(--muted)", fontSize: 14 }}>
-            {payments.length} resultados
-          </span>
+          <div className="filter-row">
+            <button type="button" className="filter-pill" onClick={() => setStatusFilter("all")}>
+              Todos
+            </button>
+            {paymentFilterStatuses.map(({ label, value }) => (
+              <button
+                key={value}
+                type="button"
+                className="filter-pill"
+                onClick={() => setStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        <span style={{ color: "var(--muted)", fontSize: 14 }}>
+          {filteredPayments.length} de {payments.length} resultados
+        </span>
 
         {loading ? (
           <p>Cargando cobros...</p>
@@ -217,8 +255,8 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody>
-              {payments.length > 0 ? (
-                payments.map((payment) => (
+              {filteredPayments.length > 0 ? (
+                filteredPayments.map((payment) => (
                   <tr key={payment.id}>
                     <td style={{ fontWeight: 600 }}>
                       COB-{String(payment.id).padStart(3, "0")}
