@@ -1,9 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getPayments } from "../../../lib/api";
-import { Payment, PaymentStatus } from "../../../lib/types";
-import PaymentModal from "../../../components/payments/PaymentModal";
+import { useEffect, useMemo, useState } from "react";
+import PaymentModal from "@/components/payments/PaymentModal";
+import { getPayments, updatePayment } from "@/lib/api";
+import { Payment, PaymentMethod, PaymentStatus } from "@/lib/types";
+
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  pending: "Pendiente",
+  completed: "Pagado",
+  failed: "Fallido",
+  refunded: "Devuelto",
+};
+
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  cash: "Efectivo",
+  card: "Tarjeta",
+  transfer: "Transferencia",
+};
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value);
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(date));
+}
 
 function KpiCard({
   title,
@@ -16,47 +44,49 @@ function KpiCard({
   subtitle: string;
   variant?: "positive" | "warning";
 }) {
+  const metaClass =
+    variant === "positive"
+      ? "kpi-card__meta--positive"
+      : variant === "warning"
+        ? "kpi-card__meta--warning"
+        : "";
+
   return (
     <div className="kpi-card">
       <p className="kpi-card__label">{title}</p>
       <h3 className="kpi-card__value">{value}</h3>
-      <p
-        className={`kpi-card__meta ${
-          variant === "positive"
-            ? "kpi-card__meta--positive"
-            : variant === "warning"
-              ? "kpi-card__meta--warning"
-              : ""
-        }`}
-      >
-        {subtitle}
-      </p>
+      <p className={`kpi-card__meta ${metaClass}`}>{subtitle}</p>
     </div>
   );
 }
 
 function Badge({ status }: { status: PaymentStatus }) {
-  const label = status === "completed" ? "Pagado" : status === "pending" ? "Pendiente" : status;
-  const variant = status === "completed" ? "confirmed" : "pending";
-  
-  return (
-    <span className={`badge badge--${variant}`}>
-      {label}
-    </span>
-  );
+  const variant =
+    status === "completed"
+      ? "confirmed"
+      : status === "refunded"
+        ? "paid"
+        : "pending";
+
+  return <span className={`badge badge--${variant}`}>{paymentStatusLabels[status]}</span>;
 }
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const loadPayments = async () => {
+    setErrorMessage("");
+
     try {
       const data = await getPayments();
       setPayments(data);
     } catch (err) {
       console.error("Failed to load payments", err);
+      setErrorMessage("No se pudieron cargar los cobros.");
     } finally {
       setLoading(false);
     }
@@ -66,11 +96,37 @@ export default function PaymentsPage() {
     loadPayments();
   }, []);
 
-  const totalCollected = payments
-    .filter(p => p.status === "completed")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalCollected = useMemo(
+    () =>
+      payments
+        .filter((payment) => payment.status === "completed")
+        .reduce((sum, payment) => sum + Number(payment.amount), 0),
+    [payments]
+  );
 
-  const pendingCount = payments.filter(p => p.status === "pending").length;
+  const pendingCount = useMemo(
+    () => payments.filter((payment) => payment.status === "pending").length,
+    [payments]
+  );
+
+  const markPaymentAsPaid = async (paymentId: number) => {
+    setUpdatingPaymentId(paymentId);
+    setErrorMessage("");
+
+    try {
+      const updatedPayment = await updatePayment(paymentId, { status: "completed" });
+      setPayments((currentPayments) =>
+        currentPayments.map((payment) =>
+          payment.id === paymentId ? { ...payment, ...updatedPayment } : payment
+        )
+      );
+    } catch (err) {
+      console.error("Failed to update payment", err);
+      setErrorMessage("No se pudo marcar el cobro como pagado.");
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  };
 
   return (
     <div className="page-stack">
@@ -80,8 +136,8 @@ export default function PaymentsPage() {
           <p>Seguimiento de cobros realizados y pendientes.</p>
         </div>
 
-        <button 
-          className="primary-btn" 
+        <button
+          className="primary-btn"
           type="button"
           onClick={() => setIsModalOpen(true)}
         >
@@ -92,7 +148,7 @@ export default function PaymentsPage() {
       <section className="kpi-grid">
         <KpiCard
           title="Cobrado total"
-          value={`${totalCollected.toFixed(2)} €`}
+          value={formatCurrency(totalCollected)}
           subtitle={`${payments.length} operaciones registradas`}
           variant="positive"
         />
@@ -102,25 +158,27 @@ export default function PaymentsPage() {
           subtitle="Cobros por revisar"
           variant="warning"
         />
-        <KpiCard 
-          title="Último registro" 
-          value={payments.length > 0 ? `${Number(payments[0].amount).toFixed(2)} €` : "--"} 
-          subtitle="Volumen más reciente" 
+        <KpiCard
+          title="Ultimo registro"
+          value={payments.length > 0 ? formatCurrency(Number(payments[0].amount)) : "--"}
+          subtitle="Volumen mas reciente"
         />
-        <KpiCard 
-          title="Estado" 
-          value="Sincronizado" 
-          subtitle="Conectado a la BD" 
+        <KpiCard
+          title="Estado"
+          value="Sincronizado"
+          subtitle="Conectado a la BD"
         />
       </section>
 
       <section className="section-card">
         <div className="panel-title-row">
           <h3 className="panel-title">Listado de cobros</h3>
-          <span style={{ color: "#6b7280", fontSize: 14 }}>
+          <span style={{ color: "var(--muted)", fontSize: 14 }}>
             {payments.length} resultados
           </span>
         </div>
+
+        {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
 
         {loading ? (
           <p>Cargando cobros...</p>
@@ -131,27 +189,40 @@ export default function PaymentsPage() {
                 <th>ID</th>
                 <th>Cita ID</th>
                 <th>Importe</th>
-                <th>Método</th>
+                <th>Metodo</th>
                 <th>Fecha</th>
                 <th>Estado</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {payments.map((payment) => (
                 <tr key={payment.id}>
-                  <td style={{ fontWeight: 600 }}>COB-{String(payment.id).padStart(3, '0')}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    COB-{String(payment.id).padStart(3, "0")}
+                  </td>
                   <td>Cita #{payment.appointmentId}</td>
-                  <td>{Number(payment.amount).toFixed(2)} €</td>
-                  <td style={{ textTransform: "capitalize" }}>{payment.method}</td>
-                  <td>{new Date(payment.createdAt).toLocaleDateString()}</td>
+                  <td>{formatCurrency(Number(payment.amount))}</td>
+                  <td>{paymentMethodLabels[payment.method]}</td>
+                  <td>{formatDate(payment.createdAt)}</td>
                   <td>
                     <Badge status={payment.status} />
+                  </td>
+                  <td>
+                    <button
+                      className="secondary-btn table-action-btn"
+                      type="button"
+                      onClick={() => markPaymentAsPaid(payment.id)}
+                      disabled={payment.status !== "pending" || updatingPaymentId === payment.id}
+                    >
+                      {updatingPaymentId === payment.id ? "Actualizando..." : "Marcar pagado"}
+                    </button>
                   </td>
                 </tr>
               ))}
               {payments.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", paddingTop: 20, paddingBottom: 20, color: "#6b7280" }}>
+                  <td colSpan={7} className="empty-table-cell">
                     No hay cobros registrados.
                   </td>
                 </tr>
@@ -162,10 +233,7 @@ export default function PaymentsPage() {
       </section>
 
       {isModalOpen && (
-        <PaymentModal 
-          onClose={() => setIsModalOpen(false)} 
-          onSuccess={loadPayments}
-        />
+        <PaymentModal onClose={() => setIsModalOpen(false)} onSuccess={loadPayments} />
       )}
     </div>
   );

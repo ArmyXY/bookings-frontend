@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getAppointments, createPayment } from "../../lib/api";
-import { Appointment, PaymentMethod } from "../../lib/types";
+import { useEffect, useState } from "react";
+import { createPayment, getAppointments } from "@/lib/api";
+import { Appointment, PaymentMethod } from "@/lib/types";
 
 interface PaymentModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Error al registrar el pago";
+}
+
 export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
-  const [amount, setAmount] = useState<string>("");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,18 +25,18 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
     async function loadAppointments() {
       try {
         const data = await getAppointments();
-        // Filter only those that are not already paid (if status is 'paid')
-        // Or simply all confirmed ones.
-        setAppointments(data.filter(a => a.status !== "paid"));
+        setAppointments(data.filter((appointment) => appointment.status !== "paid"));
       } catch (err) {
         console.error("Failed to load appointments", err);
       }
     }
+
     loadAppointments();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!selectedAppointmentId || !amount) {
       setError("Por favor rellena todos los campos obligatorios");
       return;
@@ -45,12 +49,12 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
       await createPayment({
         appointmentId: parseInt(selectedAppointmentId),
         amount: parseFloat(amount),
-        method: method,
+        method,
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Error al registrar el pago");
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -74,9 +78,9 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
               required
             >
               <option value="">Selecciona una cita...</option>
-              {appointments.map((app) => (
-                <option key={app.id} value={app.id}>
-                  ID: {app.id} - {app.serviceName} ({app.date})
+              {appointments.map((appointment) => (
+                <option key={appointment.id} value={appointment.id}>
+                  ID: {appointment.id} - {appointment.serviceName} ({appointment.date})
                 </option>
               ))}
             </select>
@@ -84,7 +88,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
 
           <div>
             <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-              Importe (€)
+              Importe (EUR)
             </label>
             <input
               type="number"
@@ -99,7 +103,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
 
           <div>
             <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-              Método de pago
+              Metodo de pago
             </label>
             <select
               className="select"
@@ -112,7 +116,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
             </select>
           </div>
 
-          {error && <p className="input--full message-error">{error}</p>}
+          {error ? <p className="input--full message-error">{error}</p> : null}
 
           <div className="input--full modal-actions" style={{ marginTop: 24 }}>
             <button

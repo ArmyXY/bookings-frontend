@@ -36,6 +36,8 @@ export interface CreatePaymentDto {
   appointmentId: number;
 }
 
+export type UpdatePaymentDto = Partial<CreatePaymentDto>;
+
 export interface CreateCustomerDto {
   name: string;
   email: string;
@@ -128,6 +130,25 @@ export async function createPayment(data: CreatePaymentDto): Promise<Payment> {
 
   if (!res.ok) {
     throw new Error("Error al registrar el pago");
+  }
+
+  return res.json();
+}
+
+export async function updatePayment(
+  id: number,
+  data: UpdatePaymentDto
+): Promise<Payment> {
+  const res = await fetch(`${API_URL}/payments/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al editar el pago");
   }
 
   return res.json();
