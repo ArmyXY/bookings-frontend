@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getAppointments, createPayment } from "../../lib/api";
-import { Appointment, PaymentMethod } from "../../lib/types";
+import { useEffect, useState } from "react";
+import { createPayment, getAppointments } from "@/lib/api";
+import { Appointment, PaymentMethod } from "@/lib/types";
 
 interface PaymentModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Error al registrar el pago";
+}
+
 export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
-  const [amount, setAmount] = useState<string>("");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,18 +25,19 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
     async function loadAppointments() {
       try {
         const data = await getAppointments();
-        // Filter only those that are not already paid (if status is 'paid')
-        // Or simply all confirmed ones.
-        setAppointments(data.filter(a => a.status !== "paid"));
+        setAppointments(data.filter((appointment) => appointment.status !== "completado"));
       } catch (err) {
         console.error("Failed to load appointments", err);
+        setError("No se pudieron cargar las citas pendientes.");
       }
     }
+
     loadAppointments();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!selectedAppointmentId || !amount) {
       setError("Por favor rellena todos los campos obligatorios");
       return;
@@ -45,12 +50,13 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
       await createPayment({
         appointmentId: parseInt(selectedAppointmentId),
         amount: parseFloat(amount),
-        method: method,
+        method,
+        status: "pendiente",
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Error al registrar el pago");
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -60,7 +66,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <h3 className="modal-title">Registrar Cobro</h3>
-        <p className="modal-text">Selecciona una cita y registra el pago correspondiente.</p>
+        <p className="modal-text">Selecciona una cita y registra el cobro correspondiente.</p>
 
         <form onSubmit={handleSubmit} className="form-grid">
           <div className="input--full">
@@ -74,9 +80,10 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
               required
             >
               <option value="">Selecciona una cita...</option>
-              {appointments.map((app) => (
-                <option key={app.id} value={app.id}>
-                  ID: {app.id} - {app.serviceName} ({app.date})
+              {appointments.map((appointment) => (
+                <option key={appointment.id} value={appointment.id}>
+                  #{appointment.id} - {appointment.serviceName} -{" "}
+                  {appointment.customer?.name ?? `Cliente ${appointment.customerId}`}
                 </option>
               ))}
             </select>
@@ -84,10 +91,11 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
 
           <div>
             <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-              Importe (€)
+              Importe (EUR)
             </label>
             <input
               type="number"
+              min="0"
               step="0.01"
               className="input"
               placeholder="0.00"
@@ -99,7 +107,7 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
 
           <div>
             <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-              Método de pago
+              Metodo de pago
             </label>
             <select
               className="select"
@@ -112,15 +120,10 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
             </select>
           </div>
 
-          {error && <p className="input--full message-error">{error}</p>}
+          {error ? <p className="input--full message-error">{error}</p> : null}
 
           <div className="input--full modal-actions" style={{ marginTop: 24 }}>
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={onClose}
-              disabled={loading}
-            >
+            <button type="button" className="secondary-btn" onClick={onClose} disabled={loading}>
               Cancelar
             </button>
             <button

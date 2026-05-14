@@ -4,34 +4,51 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type {
   AppointmentStatus,
+  Business,
   Customer,
   DashboardStats,
   PaymentMethod,
   PaymentStatus,
 } from "@/lib/types";
 import type { Booking } from "@/lib/api";
-import { getAppointments, getCustomers, getDashboardStats } from "@/lib/api";
+import {
+  getAppointments,
+  getBusinesses,
+  getCustomers,
+  getDashboardStats,
+} from "@/lib/api";
 
-type DashboardView = "resumen" | "reservas" | "clientes" | "pagos";
+type DashboardView = "resumen" | "reservas" | "clientes" | "negocios" | "pagos";
+
+const appointmentStatusLabels: Record<AppointmentStatus, string> = {
+  pendiente: "Pendiente",
+  confirmado: "Confirmada",
+  completado: "Completada",
+  cancelado: "Cancelada",
+};
+
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  pendiente: "Pendiente",
+  pagado: "Pagado",
+  devolucion: "Devuelto",
+  "devolución": "Devuelto",
+  "devoluciÃ³n": "Devuelto",
+};
+
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
+};
 
 function Badge({ status }: { status: AppointmentStatus | PaymentStatus }) {
-  const labels: Record<AppointmentStatus | PaymentStatus, string> = {
-    pending: "Pendiente",
-    confirmed: "Confirmada",
-    paid: "Pagada",
-    completed: "Completado",
-    failed: "Fallido",
-    refunded: "Devuelto",
-  };
-
+  const labels = { ...appointmentStatusLabels, ...paymentStatusLabels };
   const badgeStatus =
-    status === "completed"
+    status === "confirmado" || status === "completado" || status === "pagado"
       ? "confirmed"
-      : status === "refunded"
+      : status === "cancelado" || status === "devolucion" || status === "devolución" || status === "devoluciÃ³n"
         ? "paid"
-        : status === "failed"
-          ? "pending"
-          : status;
+        : "pending";
 
   return <span className={`badge badge--${badgeStatus}`}>{labels[status]}</span>;
 }
@@ -47,21 +64,18 @@ function KpiCard({
   subtitle: string;
   variant?: "positive" | "warning";
 }) {
+  const metaClass =
+    variant === "positive"
+      ? "kpi-card__meta--positive"
+      : variant === "warning"
+        ? "kpi-card__meta--warning"
+        : "";
+
   return (
     <div className="kpi-card">
       <p className="kpi-card__label">{title}</p>
       <h3 className="kpi-card__value">{value}</h3>
-      <p
-        className={`kpi-card__meta ${
-          variant === "positive"
-            ? "kpi-card__meta--positive"
-            : variant === "warning"
-              ? "kpi-card__meta--warning"
-              : ""
-        }`}
-      >
-        {subtitle}
-      </p>
+      <p className={`kpi-card__meta ${metaClass}`}>{subtitle}</p>
     </div>
   );
 }
@@ -81,20 +95,19 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
-function paymentMethodLabel(method: PaymentMethod) {
-  const labels: Record<PaymentMethod, string> = {
-    cash: "Efectivo",
-    card: "Tarjeta",
-    transfer: "Transferencia",
-  };
+function getCustomerName(booking: Booking) {
+  return booking.customer?.name ?? `Cliente #${booking.customerId}`;
+}
 
-  return labels[method];
+function getBusinessName(booking: Booking) {
+  return booking.business?.name ?? `Negocio #${booking.businessId}`;
 }
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardStats | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeView, setActiveView] = useState<DashboardView>("resumen");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -103,14 +116,16 @@ export default function DashboardPage() {
     setErrorMessage("");
 
     try {
-      const [data, appointmentsData, customersData] = await Promise.all([
+      const [data, appointmentsData, customersData, businessesData] = await Promise.all([
         getDashboardStats(),
         getAppointments(),
         getCustomers(),
+        getBusinesses(),
       ]);
       setDashboard(data);
       setBookings(appointmentsData);
       setCustomers(customersData);
+      setBusinesses(businessesData);
     } catch {
       setErrorMessage("No se pudieron cargar los datos del panel.");
     } finally {
@@ -135,12 +150,23 @@ export default function DashboardPage() {
     );
   }, [dashboard]);
 
+  const activeTitle =
+    activeView === "reservas"
+      ? "Reservas registradas"
+      : activeView === "clientes"
+        ? "Clientes registrados"
+        : activeView === "negocios"
+          ? "Negocios registrados"
+          : activeView === "pagos"
+            ? "Pagos recientes"
+            : "Datos del panel";
+
   return (
     <div className="page-stack">
       <section className="page-hero">
         <div>
           <h2>Panel de control</h2>
-          <p>Control diario de reservas, clientes y cobros.</p>
+          <p>Control diario de reservas, clientes, negocios y cobros.</p>
         </div>
       </section>
 
@@ -159,65 +185,40 @@ export default function DashboardPage() {
           subtitle="Reservas registradas"
         />
         <KpiCard
-          title="Reservas pendientes"
-          value={dashboard ? String(dashboard.appointmentsByStatus.pending) : "-"}
-          subtitle="Seguimiento necesario"
-          variant="warning"
+          title="Negocios"
+          value={String(businesses.length)}
+          subtitle="Comercios conectados"
         />
         <KpiCard
           title="Clientes"
           value={dashboard ? String(dashboard.stats.totalCustomers) : "-"}
-          subtitle="Clientes registrados correctamente"
+          subtitle="Clientes registrados"
         />
       </section>
 
       <section className="section-card">
         <div className="panel-title-row">
-          <h3 className="panel-title">
-            {activeView === "reservas"
-              ? "Reservas registradas"
-              : activeView === "clientes"
-                ? "Clientes registrados"
-                : activeView === "pagos"
-                  ? "Pagos recientes"
-                  : "Datos del panel"}
-          </h3>
+          <h3 className="panel-title">{activeTitle}</h3>
           <div className="filter-row">
-            <button
-              className="filter-pill"
-              type="button"
-              onClick={() => setActiveView("resumen")}
-            >
-              Resumen
-            </button>
-            <button
-              className="filter-pill"
-              type="button"
-              onClick={() => setActiveView("reservas")}
-            >
-              Reservas
-            </button>
-            <button
-              className="filter-pill"
-              type="button"
-              onClick={() => setActiveView("clientes")}
-            >
-              Clientes
-            </button>
-            <button
-              className="filter-pill"
-              type="button"
-              onClick={() => setActiveView("pagos")}
-            >
-              Pagos
-            </button>
+            {(["resumen", "reservas", "clientes", "negocios", "pagos"] as DashboardView[]).map(
+              (view) => (
+                <button
+                  key={view}
+                  className="filter-pill"
+                  type="button"
+                  onClick={() => setActiveView(view)}
+                >
+                  {view.charAt(0).toUpperCase() + view.slice(1)}
+                </button>
+              )
+            )}
           </div>
         </div>
 
         {loading ? (
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0" }}>
             <div className="spinner"></div>
-            <span style={{ color: "var(--muted)", fontSize: 14 }}>PRUEBA DE CARGA...</span>
+            <span style={{ color: "var(--muted)", fontSize: 14 }}>Cargando...</span>
           </div>
         ) : null}
 
@@ -230,7 +231,7 @@ export default function DashboardPage() {
                 <p className="info-box__text">
                   {dashboard.appointmentsByStatus.pending} pendientes,{" "}
                   {dashboard.appointmentsByStatus.confirmed} confirmadas y{" "}
-                  {dashboard.appointmentsByStatus.paid} pagadas
+                  {dashboard.appointmentsByStatus.paid} completadas
                 </p>
               </div>
 
@@ -241,7 +242,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="info-box__text">
                   {nextAppointment
-                    ? `${nextAppointment.service} · ${formatDate(nextAppointment.date)}`
+                    ? `${nextAppointment.service} - ${formatDate(nextAppointment.date)}`
                     : "No hay datos disponibles"}
                 </p>
               </div>
@@ -255,15 +256,15 @@ export default function DashboardPage() {
                 </p>
                 <p className="info-box__text">
                   {latestPayment
-                    ? `${paymentMethodLabel(latestPayment.method)} · ${formatDate(latestPayment.date)}`
+                    ? `${paymentMethodLabels[latestPayment.method]} - ${formatDate(latestPayment.date)}`
                     : "No hay pagos recientes"}
                 </p>
               </div>
 
               <div className="info-box">
-                <p className="info-box__eyebrow">Clientes registrados</p>
-                <p className="info-box__title">{dashboard.stats.totalCustomers}</p>
-                <p className="info-box__text">Registrados en tu APP 👍</p>
+                <p className="info-box__eyebrow">Negocios registrados</p>
+                <p className="info-box__title">{businesses.length}</p>
+                <p className="info-box__text">Disponibles para nuevas reservas</p>
               </div>
             </div>
           </section>
@@ -272,7 +273,7 @@ export default function DashboardPage() {
         {!loading && activeView === "reservas" ? (
           <div className="page-stack" style={{ gap: 16 }}>
             <div className="panel-title-row" style={{ marginBottom: 0 }}>
-              <span style={{ color: "#6b7280", fontSize: 14 }}>
+              <span style={{ color: "var(--muted)", fontSize: 14 }}>
                 {bookings.length} reservas encontradas
               </span>
               <Link className="secondary-btn" href="/bookings">
@@ -288,7 +289,7 @@ export default function DashboardPage() {
                   <th>Hora</th>
                   <th>Servicio</th>
                   <th>Cliente</th>
-                  <th>Comercio</th>
+                  <th>Negocio</th>
                   <th>Estado</th>
                 </tr>
               </thead>
@@ -300,8 +301,8 @@ export default function DashboardPage() {
                       <td>{formatDate(booking.date)}</td>
                       <td>{booking.time}</td>
                       <td>{booking.serviceName}</td>
-                      <td>{booking.customerId}</td>
-                      <td>{booking.businessId}</td>
+                      <td>{getCustomerName(booking)}</td>
+                      <td>{getBusinessName(booking)}</td>
                       <td>
                         <Badge status={booking.status} />
                       </td>
@@ -309,7 +310,9 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7}>No hay reservas registradas.</td>
+                    <td colSpan={7} className="empty-table-cell">
+                      No hay reservas registradas.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -320,7 +323,7 @@ export default function DashboardPage() {
         {!loading && activeView === "clientes" ? (
           <div className="page-stack" style={{ gap: 16 }}>
             <div className="panel-title-row" style={{ marginBottom: 0 }}>
-              <span style={{ color: "#6b7280", fontSize: 14 }}>
+              <span style={{ color: "var(--muted)", fontSize: 14 }}>
                 {customers.length} clientes encontrados
               </span>
               <Link className="secondary-btn" href="/customers">
@@ -351,7 +354,55 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5}>No hay clientes registrados.</td>
+                    <td colSpan={5} className="empty-table-cell">
+                      No hay clientes registrados.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {!loading && activeView === "negocios" ? (
+          <div className="page-stack" style={{ gap: 16 }}>
+            <div className="panel-title-row" style={{ marginBottom: 0 }}>
+              <span style={{ color: "var(--muted)", fontSize: 14 }}>
+                {businesses.length} negocios encontrados
+              </span>
+              <Link className="secondary-btn" href="/businesses">
+                Ver pagina de negocios
+              </Link>
+            </div>
+
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Email</th>
+                  <th>Telefono</th>
+                  <th>Horario</th>
+                </tr>
+              </thead>
+              <tbody>
+                {businesses.length > 0 ? (
+                  businesses.map((business) => (
+                    <tr key={business.id}>
+                      <td style={{ fontWeight: 600 }}>{business.id}</td>
+                      <td>{business.name}</td>
+                      <td>{business.email}</td>
+                      <td>{business.phone}</td>
+                      <td>
+                        {business.openingTime} - {business.closingTime}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="empty-table-cell">
+                      No hay negocios registrados.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -376,7 +427,7 @@ export default function DashboardPage() {
                   <tr key={payment.id}>
                     <td style={{ fontWeight: 600 }}>{payment.id}</td>
                     <td>{formatCurrency(Number(payment.amount))}</td>
-                    <td>{paymentMethodLabel(payment.method)}</td>
+                    <td>{paymentMethodLabels[payment.method]}</td>
                     <td>{formatDate(payment.date)}</td>
                     <td>
                       <Badge status={payment.status} />
@@ -385,7 +436,9 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5}>No hay pagos recientes.</td>
+                  <td colSpan={5} className="empty-table-cell">
+                    No hay pagos recientes.
+                  </td>
                 </tr>
               )}
             </tbody>

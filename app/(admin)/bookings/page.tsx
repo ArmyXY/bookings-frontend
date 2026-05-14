@@ -10,7 +10,7 @@ export default async function BookingsPage() {
     bookings = await getAppointments();
   } catch {
     initialError =
-      "No se pudieron cargar las reservas. Comprueba que el backend esté levantado.";
+      "No se pudieron cargar las reservas. Comprueba que el backend este levantado.";
   }
 
   return <BookingsClient initialBookings={bookings} initialError={initialError} />;

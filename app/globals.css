@@ -112,7 +112,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -290,6 +291,13 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.filter-pill:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .secondary-btn {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -456,12 +464,33 @@ body {
 }
 
 .filter-pill {
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--primary);
+  background: var(--primary);
   border-radius: 999px;
   padding: 10px 14px;
   font-size: 14px;
-  color: #334155;
+  color: var(--primary-text);
+  font-weight: 600;
+}
+
+.table-action-btn {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.empty-table-cell {
+  padding-top: 20px;
+  padding-bottom: 20px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .form-grid {
@@ -478,6 +507,11 @@ body {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text);
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
 }
 
 .input--full {
@@ -631,7 +665,7 @@ body {
 }
 
 .filter-pill:hover {
-  background: var(--surface-2);
+  opacity: 0.88;
   cursor: pointer;
 }
 
