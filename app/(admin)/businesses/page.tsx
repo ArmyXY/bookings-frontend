@@ -11,6 +11,9 @@ import {
 import type { CreateBusinessDto, UpdateBusinessDto } from "@/lib/api";
 import type { Business } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
+import BusinessCalendar from "@/components/businesses/BusinessCalendar";
+import { getAppointments } from "@/lib/api";
+import type { Appointment } from "@/lib/types";
 
 const emptyForm: CreateBusinessDto = {
   name: "",
@@ -34,20 +37,26 @@ export default function BusinessesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+  const [calendarBusiness, setCalendarBusiness] = useState<Business | null>(null);
 
   useEffect(() => {
-    async function loadBusinesses() {
+    async function loadData() {
       try {
-        const data = await getBusinesses();
-        setBusinesses(data);
+        const [businessesData, appointmentsData] = await Promise.all([
+          getBusinesses(),
+          getAppointments()
+        ]);
+        setBusinesses(businessesData);
+        setAllAppointments(appointmentsData);
       } catch {
-        setErrorMessage("No se pudieron cargar los negocios.");
+        setErrorMessage("No se pudieron cargar los datos.");
       } finally {
         setLoading(false);
       }
     }
 
-    loadBusinesses();
+    loadData();
   }, []);
 
   const filteredBusinesses = useMemo(() => {
@@ -391,6 +400,14 @@ export default function BusinessesPage() {
                     <td>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                         <button
+                          className="primary-btn"
+                          type="button"
+                          style={{ padding: "8px 16px", fontSize: "13px", height: "auto" }}
+                          onClick={() => setCalendarBusiness(business)}
+                        >
+                          Calendario
+                        </button>
+                        <button
                           className="secondary-btn"
                           type="button"
                           style={{ padding: "8px 16px" }}
@@ -464,6 +481,13 @@ export default function BusinessesPage() {
           </div>
         </div>
       ) : null}
+      {calendarBusiness && (
+        <BusinessCalendar
+          business={calendarBusiness}
+          appointments={allAppointments.filter(a => a.businessId === calendarBusiness.id)}
+          onClose={() => setCalendarBusiness(null)}
+        />
+      )}
     </div>
   );
 }
