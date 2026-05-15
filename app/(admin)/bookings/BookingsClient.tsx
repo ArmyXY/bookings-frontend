@@ -16,6 +16,8 @@ import {
 } from "@/lib/api";
 import type { Business, Customer } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
+import StatsCard from "@/components/ui/StatsCard";
+import ModalPortal from "@/components/ui/ModalPortal";
 
 const statusLabels: Record<BookingStatus, string> = {
   pendiente: "Pendiente",
@@ -425,26 +427,31 @@ export default function BookingsClient({
       </section>
 
       <section className="kpi-grid">
-        <div className="kpi-card">
-          <p className="kpi-card__label">Total reservas</p>
-          <h3 className="kpi-card__value">{counts.total}</h3>
-          <p className="kpi-card__meta">Registros disponibles</p>
-        </div>
-        <div className="kpi-card">
-          <p className="kpi-card__label">Pendientes</p>
-          <h3 className="kpi-card__value">{counts.pending}</h3>
-          <p className="kpi-card__meta kpi-card__meta--warning">Requieren seguimiento</p>
-        </div>
-        <div className="kpi-card">
-          <p className="kpi-card__label">Confirmadas</p>
-          <h3 className="kpi-card__value">{counts.confirmed}</h3>
-          <p className="kpi-card__meta kpi-card__meta--positive">Estado activo</p>
-        </div>
-        <div className="kpi-card">
-          <p className="kpi-card__label">Completadas</p>
-          <h3 className="kpi-card__value">{counts.paid}</h3>
-          <p className="kpi-card__meta">Reservas cerradas</p>
-        </div>
+        <StatsCard
+          title="Total reservas"
+          value={String(counts.total)}
+          subtitle="Registros disponibles"
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>}
+        />
+        <StatsCard
+          title="Pendientes"
+          value={String(counts.pending)}
+          subtitle="Requieren seguimiento"
+          trend={{ value: "Check", positive: false }}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+        />
+        <StatsCard
+          title="Confirmadas"
+          value={String(counts.confirmed)}
+          subtitle="Estado activo"
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+        />
+        <StatsCard
+          title="Completadas"
+          value={String(counts.paid)}
+          subtitle="Reservas cerradas"
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>}
+        />
       </section>
 
       {isCreateOpen ? (
@@ -490,51 +497,53 @@ export default function BookingsClient({
       ) : null}
 
       {deleteTargetId !== null && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-modal-title"
-          aria-describedby="delete-modal-description"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeDeleteModal();
-          }}
-        >
-          <div className="modal-card">
-            <div className="modal-icon">!</div>
-            <h3 id="delete-modal-title" className="modal-title">
-              Eliminar reserva
-            </h3>
-            <p id="delete-modal-description" className="modal-text">
-              ¿Seguro que quieres eliminar la reserva #{deleteTargetId}? Esta acción no se puede deshacer.
-            </p>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={closeDeleteModal}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="danger-btn"
-                onClick={confirmDelete}
-                disabled={deletingBookingId === deleteTargetId}
-                style={{ display: "flex", alignItems: "center", gap: 8 }}
-              >
-                {deletingBookingId === deleteTargetId ? (
-                  <>
-                    <div className="spinner spinner--sm"></div>
-                    <span>Eliminando...</span>
-                  </>
-                ) : (
-                  "Eliminar"
-                )}
-              </button>
+        <ModalPortal>
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            aria-describedby="delete-modal-description"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeDeleteModal();
+            }}
+          >
+            <div className="modal-card">
+              <div className="modal-icon">!</div>
+              <h3 id="delete-modal-title" className="modal-title">
+                Eliminar reserva
+              </h3>
+              <p id="delete-modal-description" className="modal-text">
+                ¿Seguro que quieres eliminar la reserva #{deleteTargetId}? Esta acción no se puede deshacer.
+              </p>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={closeDeleteModal}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="danger-btn"
+                  onClick={confirmDelete}
+                  disabled={deletingBookingId === deleteTargetId}
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  {deletingBookingId === deleteTargetId ? (
+                    <>
+                      <div className="spinner spinner--sm"></div>
+                      <span>Eliminando...</span>
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       <section className="section-card">

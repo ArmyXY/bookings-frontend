@@ -12,6 +12,8 @@ import type { CreateBusinessDto, UpdateBusinessDto } from "@/lib/api";
 import type { Business } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
 import BusinessCalendar from "@/components/businesses/BusinessCalendar";
+import StatsCard from "@/components/ui/StatsCard";
+import ModalPortal from "@/components/ui/ModalPortal";
 import { getAppointments } from "@/lib/api";
 import type { Appointment } from "@/lib/types";
 
@@ -229,26 +231,34 @@ export default function BusinessesPage() {
       </section>
 
       <section className="kpi-grid">
-        <div className="kpi-card">
-          <p className="kpi-card__label">Total Negocios</p>
-          <h3 className="kpi-card__value">{businesses.length}</h3>
-          <p className="kpi-card__meta">Sedes registradas</p>
-        </div>
-        <div className="kpi-card">
-          <p className="kpi-card__label">Activos hoy</p>
-          <h3 className="kpi-card__value">{businesses.length}</h3>
-          <p className="kpi-card__meta kpi-card__meta--positive">Operativos</p>
-        </div>
-        <div className="kpi-card" style={{ opacity: 0.5 }}>
-          <p className="kpi-card__label">Próxima apertura</p>
-          <h3 className="kpi-card__value">09:00</h3>
-          <p className="kpi-card__meta">Horario estándar</p>
-        </div>
-        <div className="kpi-card" style={{ opacity: 0.5 }}>
-          <p className="kpi-card__label">Cierre promedio</p>
-          <h3 className="kpi-card__value">20:00</h3>
-          <p className="kpi-card__meta">Horario estándar</p>
-        </div>
+        <StatsCard
+          title="Total Negocios"
+          value={String(businesses.length)}
+          subtitle="Sedes registradas"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21v-4a3 3 0 0 1 6 0v4"/></svg>}
+        />
+        <StatsCard
+          title="Activos hoy"
+          value={String(businesses.length)}
+          subtitle="Operativos"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+        />
+        <StatsCard
+          title="Próxima apertura"
+          value="09:00"
+          subtitle="Horario estándar"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+        />
+        <StatsCard
+          title="Cierre promedio"
+          value="20:00"
+          subtitle="Horario estándar"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+        />
       </section>
 
       {isFormOpen ? (
@@ -441,45 +451,47 @@ export default function BusinessesPage() {
       </section>
 
       {deleteTarget ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDeleteTarget(null);
-          }}
-        >
-          <div className="modal-card">
-            <div className="modal-icon">!</div>
-            <h3 className="modal-title">Eliminar negocio</h3>
-            <p className="modal-text">¿Seguro que quieres eliminar <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.</p>
-            <div className="modal-actions">
-              <button
-                className="secondary-btn"
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="danger-btn"
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleting}
-                style={{ display: "flex", alignItems: "center", gap: 8 }}
-              >
-                {deleting ? (
-                  <>
-                    <div className="spinner spinner--sm"></div>
-                    <span>Eliminando...</span>
-                  </>
-                ) : (
-                  "Eliminar"
-                )}
-              </button>
+        <ModalPortal>
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDeleteTarget(null);
+            }}
+          >
+            <div className="modal-card">
+              <div className="modal-icon">!</div>
+              <h3 className="modal-title">Eliminar negocio</h3>
+              <p className="modal-text">¿Seguro que quieres eliminar <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.</p>
+              <div className="modal-actions">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="danger-btn"
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  {deleting ? (
+                    <>
+                      <div className="spinner spinner--sm"></div>
+                      <span>Eliminando...</span>
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       ) : null}
       {calendarBusiness && (
         <BusinessCalendar

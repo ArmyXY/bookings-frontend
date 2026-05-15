@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPayment, getAppointments } from "@/lib/api";
 import { Appointment, PaymentMethod } from "@/lib/types";
+import ModalPortal from "@/components/ui/ModalPortal";
 
 interface PaymentModalProps {
   onClose: () => void;
@@ -63,79 +64,81 @@ export default function PaymentModal({ onClose, onSuccess }: PaymentModalProps) 
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3 className="modal-title">Registrar Cobro</h3>
-        <p className="modal-text">Selecciona una cita y registra el cobro correspondiente.</p>
+    <ModalPortal>
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <h3 className="modal-title">Registrar Cobro</h3>
+          <p className="modal-text">Selecciona una cita y registra el cobro correspondiente.</p>
 
-        <form onSubmit={handleSubmit} className="form-grid">
-          <div className="input--full">
-            <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-              Cita pendiente
-            </label>
-            <select
-              className="select"
-              value={selectedAppointmentId}
-              onChange={(e) => setSelectedAppointmentId(e.target.value)}
-              required
-            >
-              <option value="">Selecciona una cita...</option>
-              {appointments.map((appointment) => (
-                <option key={appointment.id} value={appointment.id}>
-                  #{appointment.id} - {appointment.serviceName} -{" "}
-                  {appointment.customer?.name ?? `Cliente ${appointment.customerId}`}
-                </option>
-              ))}
-            </select>
-          </div>
+          <form onSubmit={handleSubmit} className="form-grid">
+            <div className="input--full">
+              <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
+                Cita pendiente
+              </label>
+              <select
+                className="select"
+                value={selectedAppointmentId}
+                onChange={(e) => setSelectedAppointmentId(e.target.value)}
+                required
+              >
+                <option value="">Selecciona una cita...</option>
+                {appointments.map((appointment) => (
+                  <option key={appointment.id} value={appointment.id}>
+                    #{appointment.id} - {appointment.serviceName} -{" "}
+                    {appointment.customer?.name ?? `Cliente ${appointment.customerId}`}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-              Importe (EUR)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              className="input"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
-          </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
+                Importe (EUR)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="input"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+            </div>
 
-          <div>
-            <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-              Metodo de pago
-            </label>
-            <select
-              className="select"
-              value={method}
-              onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-            >
-              <option value={PaymentMethod.CASH}>Efectivo</option>
-              <option value={PaymentMethod.CARD}>Tarjeta</option>
-              <option value={PaymentMethod.TRANSFER}>Transferencia</option>
-            </select>
-          </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
+                Metodo de pago
+              </label>
+              <select
+                className="select"
+                value={method}
+                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+              >
+                <option value={PaymentMethod.CASH}>Efectivo</option>
+                <option value={PaymentMethod.CARD}>Tarjeta</option>
+                <option value={PaymentMethod.TRANSFER}>Transferencia</option>
+              </select>
+            </div>
 
-          {error ? <p className="input--full message-error">{error}</p> : null}
+            {error ? <p className="input--full message-error">{error}</p> : null}
 
-          <div className="input--full modal-actions" style={{ marginTop: 24 }}>
-            <button type="button" className="secondary-btn" onClick={onClose} disabled={loading}>
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="primary-btn"
-              disabled={loading || appointments.length === 0}
-            >
-              {loading ? "Registrando..." : "Registrar"}
-            </button>
-          </div>
-        </form>
+            <div className="input--full modal-actions" style={{ marginTop: 24 }}>
+              <button type="button" className="secondary-btn" onClick={onClose} disabled={loading}>
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="primary-btn"
+                disabled={loading || appointments.length === 0}
+              >
+                {loading ? "Registrando..." : "Registrar"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

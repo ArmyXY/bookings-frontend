@@ -5,6 +5,8 @@ import PaymentModal from "@/components/payments/PaymentModal";
 import { deletePayment, getPayments, updatePayment } from "@/lib/api";
 import { Payment, PaymentMethod, PaymentStatus } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
+import StatsCard from "@/components/ui/StatsCard";
+import ModalPortal from "@/components/ui/ModalPortal";
 
 const paymentStatusLabels: Record<PaymentStatus, string> = {
   pendiente: "Pendiente",
@@ -52,61 +54,6 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
-function KpiCard({
-  title,
-  value,
-  subtitle,
-  variant,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  variant?: "positive" | "warning";
-}) {
-  const icon = 
-    title.includes("Cobrado") || title.includes("por cobrar") ? (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <line x1="12" y1="1" x2="12" y2="23" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      </svg>
-    ) :
-    title.includes("Pendientes") ? (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ) :
-    title.includes("Ultimo") ? (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-        <polyline points="17 6 23 6 23 12" />
-      </svg>
-    ) : (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="7 10 12 15 17 10" />
-        <line x1="12" y1="15" x2="12" y2="3" />
-      </svg>
-    );
-
-  const metaClass =
-    variant === "positive"
-      ? "kpi-card__meta--positive"
-      : variant === "warning"
-        ? "kpi-card__meta--warning"
-        : "";
-
-  return (
-    <div className="kpi-card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <p className="kpi-card__label">{title}</p>
-        <span style={{ color: "var(--primary)", opacity: 0.8 }}>{icon}</span>
-      </div>
-      <h3 className="kpi-card__value">{value}</h3>
-      <p className={`kpi-card__meta ${metaClass}`}>{subtitle}</p>
-    </div>
-  );
-}
 
 function Badge({ status }: { status: PaymentStatus }) {
   const variant = status === "pagado" ? "confirmed" : status === "pendiente" ? "pending" : "paid";
@@ -129,6 +76,7 @@ export default function PaymentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<number | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -208,22 +156,25 @@ export default function PaymentsPage() {
     }
   };
 
-  const removePayment = async (paymentId: number) => {
-    setDeletingPaymentId(paymentId);
+  async function confirmDelete() {
+    if (deleteTargetId === null) return;
+
+    setDeletingPaymentId(deleteTargetId);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
-      await deletePayment(paymentId);
+      await deletePayment(deleteTargetId);
       setPayments((currentPayments) =>
-        currentPayments.filter((payment) => payment.id !== paymentId)
+        currentPayments.filter((payment) => payment.id !== deleteTargetId)
       );
       setSuccessMessage("Cobro eliminado correctamente.");
       addNotification({
         title: "Cobro Eliminado",
-        description: `Se ha borrado el registro de cobro #${paymentId}.`,
+        description: `Se ha borrado el registro de cobro #${deleteTargetId}.`,
         type: "info"
       });
+      setDeleteTargetId(null);
     } catch {
       setErrorMessage("No se pudo eliminar el cobro.");
       addNotification({
@@ -234,7 +185,7 @@ export default function PaymentsPage() {
     } finally {
       setDeletingPaymentId(null);
     }
-  };
+  }
 
   return (
     <div className="page-stack">
@@ -267,28 +218,35 @@ export default function PaymentsPage() {
       </section>
 
       <section className="kpi-grid">
-        <KpiCard
+        <StatsCard
           title="Cobrado total"
           value={formatCurrency(totalCollected)}
-          subtitle={`${payments.filter(p => p.status === 'pagado').length} operaciones`}
-          variant="positive"
+          subtitle={`${payments.filter(p => p.status === 'pagado').length} operaciones exitosas`}
+          loading={loading}
+          trend={{ value: "Ingresos", positive: true }}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
         />
-        <KpiCard
+        <StatsCard
           title="Pendientes"
           value={String(pendingCount)}
           subtitle="Cobros por revisar"
-          variant="warning"
+          loading={loading}
+          trend={{ value: "Acción", positive: false }}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
         />
-        <KpiCard
+        <StatsCard
           title="Ultimo registro"
           value={payments.length > 0 ? formatCurrency(Number(payments[0].amount)) : "--"}
-          subtitle="Volumen mas reciente"
+          subtitle="Volumen más reciente"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
         />
-        <KpiCard 
+        <StatsCard 
           title="Total por cobrar" 
           value={formatCurrency(totalPending)} 
-          subtitle="Deuda pendiente" 
-          variant="warning"
+          subtitle="Deuda pendiente acumulada" 
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /><circle cx="18" cy="6" r="3" strokeOpacity="0.3" /></svg>}
         />
       </section>
 
@@ -357,10 +315,9 @@ export default function PaymentsPage() {
                         className="secondary-btn"
                         type="button"
                         style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }}
-                        onClick={() => removePayment(payment.id)}
-                        disabled={deletingPaymentId === payment.id}
+                        onClick={() => setDeleteTargetId(payment.id)}
                       >
-                        {deletingPaymentId === payment.id ? "..." : "Eliminar"}
+                        Eliminar
                       </button>
                     </div>
                   </td>
@@ -382,6 +339,52 @@ export default function PaymentsPage() {
       {isModalOpen ? (
         <PaymentModal onClose={() => setIsModalOpen(false)} onSuccess={loadPayments} />
       ) : null}
+
+      {deleteTargetId !== null && (
+        <ModalPortal>
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDeleteTargetId(null);
+            }}
+          >
+            <div className="modal-card">
+              <div className="modal-icon">!</div>
+              <h3 className="modal-title">Eliminar cobro</h3>
+              <p className="modal-text">
+                ¿Seguro que quieres eliminar el registro de cobro <strong>#PY-{String(deleteTargetId).padStart(3, '0')}</strong>? Esta acción no se puede deshacer.
+              </p>
+              <div className="modal-actions">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => setDeleteTargetId(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="danger-btn"
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deletingPaymentId !== null}
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  {deletingPaymentId !== null ? (
+                    <>
+                      <div className="spinner spinner--sm"></div>
+                      <span>Eliminando...</span>
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
     </div>
   );
 }

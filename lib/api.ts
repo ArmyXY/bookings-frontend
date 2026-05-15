@@ -68,11 +68,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(`Error en la peticion ${path}`);
   }
 
-  if (res.status === 204) {
-    return undefined as T;
-  }
-
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : (undefined as T);
 }
 
 export function getAppointments(): Promise<Booking[]> {

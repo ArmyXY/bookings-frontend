@@ -11,6 +11,7 @@ import {
   updateCustomer,
 } from "@/lib/api";
 import { useNotifications } from "@/components/providers/NotificationProvider";
+import ModalPortal from "@/components/ui/ModalPortal";
 
 const emptyForm: CreateCustomerDto = {
   name: "",
@@ -394,43 +395,53 @@ export default function CustomersPage() {
       </section>
 
       {deleteTarget && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-customer-title"
-          aria-describedby="delete-customer-description"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDeleteTarget(null);
-          }}
-        >
-          <div className="modal-card">
-            <div className="modal-icon">!</div>
-            <h3 id="delete-customer-title" className="modal-title">
-              Eliminar cliente
-            </h3>
-            <p id="delete-customer-description" className="modal-text">
-              ¿Seguro que quieres eliminar a {deleteTarget.name}?
-            </p>
-            <div className="modal-actions">
-              <button
-                className="secondary-btn"
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="danger-btn"
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleting}
-              >
-                {deleting ? "Eliminando..." : "Eliminar"}
-              </button>
+        <ModalPortal>
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-customer-title"
+            aria-describedby="delete-customer-description"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDeleteTarget(null);
+            }}
+          >
+            <div className="modal-card">
+              <div className="modal-icon">!</div>
+              <h3 id="delete-customer-title" className="modal-title">
+                Eliminar cliente
+              </h3>
+              <p id="delete-customer-description" className="modal-text">
+                ¿Seguro que quieres eliminar a <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.
+              </p>
+              <div className="modal-actions">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="danger-btn"
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  {deleting ? (
+                    <>
+                      <div className="spinner spinner--sm"></div>
+                      <span>Eliminando...</span>
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );
