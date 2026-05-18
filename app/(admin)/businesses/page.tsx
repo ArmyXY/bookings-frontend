@@ -412,7 +412,10 @@ export default function BusinessesPage() {
                           className="primary-btn"
                           type="button"
                           style={{ padding: "8px 16px", fontSize: "13px", height: "auto" }}
-                          onClick={() => setCalendarBusiness(business)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCalendarBusiness(business);
+                          }}
                         >
                           Calendario
                         </button>

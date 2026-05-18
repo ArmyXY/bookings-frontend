@@ -22,29 +22,32 @@ export default function NotificationDropdown() {
     <div className="notification-wrapper" ref={dropdownRef} style={{ position: "relative" }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="secondary-btn"
+        className="theme-toggle-btn"
         style={{
           display: "grid",
           placeItems: "center",
-          width: "48px",
-          height: "48px",
+          width: "42px",
+          height: "42px",
           padding: 0,
-          borderRadius: "50%",
+          borderRadius: "12px",
           border: "1.5px solid var(--border)",
-          boxShadow: "var(--shadow-sm)",
+          background: "var(--surface-2)",
+          color: "var(--text)",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
           position: "relative"
         }}
         title="Notificaciones"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unreadCount > 0 && (
           <span style={{
             position: "absolute",
-            top: "2px",
-            right: "2px",
+            top: "-2px",
+            right: "-2px",
             background: "var(--primary)",
             color: "black",
             fontSize: "10px",

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
   --bg: #F9F9F9;
@@ -60,7 +60,7 @@
   --paid-text: #60A5FA;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.5);
-  --header-bg: rgba(18, 18, 18, 0.8);
+  --header-bg: rgba(30, 30, 30, 0.85);
   --sidebar-bg: #1E1E1E;
   --primary-text: #121212;
   --sidebar-link-text: #A0A0A0;
@@ -129,7 +129,8 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
+  font-family: 'Roboto Condensed', sans-serif;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -174,7 +175,7 @@ h6 {
 }
 
 .admin-sidebar__title {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
   margin: 0;
 }
@@ -182,7 +183,7 @@ h6 {
 .admin-sidebar__subtitle {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -228,24 +229,40 @@ h6 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 40px;
+  padding: 16px 32px;
   background: var(--header-bg);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  margin: 16px 24px 0 24px;
+  width: calc(100% - 48px);
   position: sticky;
-  top: 0;
+  top: 16px;
   z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+  overflow: visible;
+}
+
+.admin-header:hover {
+  padding: 24px 40px;
+  margin: 0;
+  width: 100%;
+  border-radius: 0;
+  border-color: transparent transparent var(--border) transparent;
+  top: 0;
+  box-shadow: var(--shadow-md);
 }
 
 .admin-header__title {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
 }
 
 .admin-header__subtitle {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .admin-avatar {
@@ -320,13 +337,13 @@ h6 {
 
 .page-hero h2 {
   margin: 0;
-  font-size: 42px;
+  font-size: 48px;
 }
 
 .page-hero p {
   margin: 12px 0 0;
   color: #A1A1A1;
-  font-size: 18px;
+  font-size: 20px;
   max-width: 500px;
 }
 
@@ -388,7 +405,7 @@ h6 {
 
 .kpi-card__label {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -397,7 +414,7 @@ h6 {
 
 .kpi-card__value {
   margin: 16px 0 8px;
-  font-size: 40px;
+  font-size: 48px;
   font-weight: 800;
 }
 
@@ -423,7 +440,7 @@ h6 {
 
 .data-table th {
   padding: 16px 20px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -434,7 +451,7 @@ h6 {
 
 .data-table td {
   padding: 20px;
-  font-size: 15px;
+  font-size: 16px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -498,13 +515,47 @@ h6 {
 .input,
 .select {
   width: 100%;
-  padding: 16px 20px;
+  padding: 16px 48px 16px 20px;
   border-radius: 100px;
   border: 1.5px solid var(--border);
   background: var(--bg);
   color: var(--text);
   font-weight: 500;
   transition: all 0.2s ease;
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234B4B4B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 24px center;
+  background-size: 16px;
+}
+
+/* Force date and time inputs to align calendar/clock icon precisely at 24px from right */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  margin-right: -24px;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23A0A0A0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator:hover,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .input:focus,
@@ -705,7 +756,7 @@ h6 {
 
 .panel-title {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
 }
 
@@ -755,4 +806,11 @@ h6 {
   width: 18px;
   height: 18px;
   border-width: 2px;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--surface) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  transform: translateY(-2px) !important;
 }

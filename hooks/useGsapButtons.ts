@@ -35,7 +35,7 @@ export function useGsapButtons() {
     };
 
     const attachToExisting = () => {
-      const buttons = document.querySelectorAll(".primary-btn, .secondary-btn, .admin-sidebar__brand-inner");
+      const buttons = document.querySelectorAll(".primary-btn, .secondary-btn, .admin-sidebar__brand-inner, .theme-toggle-btn");
       buttons.forEach(attachAnimations);
     };
 
