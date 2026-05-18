@@ -249,9 +249,8 @@ export default function DashboardPage() {
           transform: "rotate(-10deg)"
         }}>
           <svg width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
-            <path d="M3 3v18h18" />
-            <path d="M18 9l-6 6-4-4-5 5" />
-            <circle cx="12" cy="12" r="9" strokeOpacity="0.2" />
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
         </div>
       </section>
@@ -280,7 +279,7 @@ export default function DashboardPage() {
           title="Negocio Top"
           value={stats?.mostActiveBusiness || "-"}
           subtitle="Mayor volumen de citas"
-          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21v-4a3 3 0 0 1 6 0v4"/></svg>}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>}
         />
         <StatsCard
           loading={loading}
