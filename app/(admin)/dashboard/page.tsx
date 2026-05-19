@@ -260,6 +260,7 @@ export default function DashboardPage() {
       <section className="kpi-grid">
         <StatsCard
           loading={loading}
+          href="/payments"
           title="Ingresos (7d)"
           value={formatCurrency(stats?.revenueWeek || 0)}
           subtitle="Ganancia neta semanal"
@@ -268,6 +269,7 @@ export default function DashboardPage() {
         />
         <StatsCard
           loading={loading}
+          href="/bookings"
           title="Reservas Hoy"
           value={String(stats?.bookingsToday || 0)}
           subtitle="Citas programadas"
@@ -276,6 +278,7 @@ export default function DashboardPage() {
         />
         <StatsCard
           loading={loading}
+          href="/businesses"
           title="Negocio Top"
           value={stats?.mostActiveBusiness || "-"}
           subtitle="Mayor volumen de citas"
@@ -283,6 +286,7 @@ export default function DashboardPage() {
         />
         <StatsCard
           loading={loading}
+          href="/customers"
           title="Clientes"
           value={String(customers.length)}
           subtitle="Usuarios activos"

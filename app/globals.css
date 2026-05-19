@@ -231,6 +231,7 @@ h6 {
   justify-content: space-between;
   padding: 16px 32px;
   background: var(--header-bg);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border: 1.5px solid var(--border);
   border-radius: 16px;
@@ -401,6 +402,23 @@ h6 {
 .kpi-card:hover {
   border-color: var(--primary);
   transform: translateY(-4px);
+}
+
+.kpi-card-link {
+  color: inherit;
+  display: block;
+  text-decoration: none;
+}
+
+.kpi-card-link:focus-visible {
+  border-radius: var(--radius-md);
+  outline: 3px solid var(--primary);
+  outline-offset: 4px;
+}
+
+.kpi-card--link {
+  cursor: pointer;
+  height: 100%;
 }
 
 .kpi-card__label {
@@ -575,6 +593,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
   backdrop-filter: blur(10px) saturate(180%);
   padding: 24px;
   animation: fadeIn 0.3s ease-out;
@@ -658,6 +677,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   animation: fadeIn 0.3s ease-out forwards;
 }

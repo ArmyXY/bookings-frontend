@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Skeleton from "./Skeleton";
 
 interface StatsCardProps {
@@ -7,6 +8,7 @@ interface StatsCardProps {
   value: string;
   subtitle: string;
   icon: React.ReactNode;
+  href?: string;
   loading?: boolean;
   trend?: {
     value: string;
@@ -14,7 +16,7 @@ interface StatsCardProps {
   };
 }
 
-export default function StatsCard({ title, value, subtitle, icon, loading, trend }: StatsCardProps) {
+export default function StatsCard({ title, value, subtitle, icon, href, loading, trend }: StatsCardProps) {
   if (loading) {
     return (
       <div className="kpi-card" style={{ padding: "32px", border: "1.5px solid var(--border)" }}>
@@ -25,8 +27,8 @@ export default function StatsCard({ title, value, subtitle, icon, loading, trend
     );
   }
 
-  return (
-    <div className="kpi-card" style={{ 
+  const card = (
+    <div className={`kpi-card ${href ? "kpi-card--link" : ""}`} style={{
       display: "flex", 
       flexDirection: "column", 
       gap: "12px", 
@@ -82,5 +84,13 @@ export default function StatsCard({ title, value, subtitle, icon, loading, trend
         </p>
       </div>
     </div>
+  );
+
+  if (!href) return card;
+
+  return (
+    <Link href={href} className="kpi-card-link">
+      {card}
+    </Link>
   );
 }
