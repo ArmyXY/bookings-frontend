@@ -3,10 +3,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import gsap from "gsap";
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const arrowRef = useRef<SVGSVGElement>(null);
   const router = useRouter();
 
   // Mock User Data
@@ -27,12 +31,60 @@ export default function UserMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+    } else {
+      // Animate out
+      if (menuRef.current) {
+        gsap.to(menuRef.current, {
+          scale: 0.85,
+          opacity: 0,
+          y: -15,
+          duration: 0.3,
+          ease: "power2.in",
+          onComplete: () => setShouldRender(false)
+        });
+      }
+      if (arrowRef.current) {
+        gsap.to(arrowRef.current, {
+          rotate: 0,
+          duration: 0.4,
+          ease: "power2.out"
+        });
+      }
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (shouldRender && isOpen) {
+      // Animate in
+      if (menuRef.current) {
+        gsap.fromTo(
+          menuRef.current,
+          { scale: 0.85, opacity: 0, y: -15 },
+          {
+            scale: 1,
+            opacity: 1,
+            y: 0,
+            duration: 0.4,
+            ease: "back.out(1.4)"
+          }
+        );
+      }
+      if (arrowRef.current) {
+        gsap.to(arrowRef.current, {
+          rotate: 180,
+          duration: 0.4,
+          ease: "power2.out"
+        });
+      }
+    }
+  }, [shouldRender, isOpen]);
+
   const handleLogout = () => {
-    // Clear simulation
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user_data");
-    
-    // Redirect to login (we'll create this page next)
     router.push("/login");
   };
 
@@ -53,27 +105,42 @@ export default function UserMenu() {
         className="user-menu-trigger"
       >
         <div className="admin-avatar" style={{ margin: 0 }}>{user.initials}</div>
-        {!isOpen && (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ opacity: 0.5 }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        )}
+        <svg
+          ref={arrowRef}
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          style={{
+            color: "var(--text)",
+            opacity: 0.8,
+            display: "block",
+            transformOrigin: "center"
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </button>
 
-      {isOpen && (
-        <div className="user-dropdown" style={{
-          position: "absolute",
-          top: "60px",
-          right: "0",
-          width: "240px",
-          background: "var(--surface)",
-          border: "1.5px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-lg)",
-          zIndex: 1000,
-          overflow: "hidden",
-          animation: "page-in 250ms var(--ease-out-expo)"
-        }}>
+      {shouldRender && (
+        <div
+          ref={menuRef}
+          className="user-dropdown"
+          style={{
+            position: "absolute",
+            top: "60px",
+            right: "0",
+            width: "240px",
+            background: "var(--surface)",
+            border: "1.5px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "var(--shadow-lg)",
+            zIndex: 1000,
+            overflow: "hidden"
+          }}
+        >
           {/* User Info Header */}
           <div style={{
             padding: "16px",

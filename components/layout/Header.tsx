@@ -8,17 +8,17 @@ export default function Header() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="admin-header" style={{ borderBottom: "1.5px solid var(--border)", padding: "0 40px" }}>
+    <header className="admin-header">
       <div>
-        <h1 className="admin-header__title" style={{ fontSize: "14px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
+        <h1 className="admin-header__title" style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
           Centro de Operaciones
         </h1>
-        <p className="admin-header__subtitle" style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)", marginTop: "2px" }}>
+        <p className="admin-header__subtitle" style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginTop: "2px" }}>
           Panel de Control Administrativo
         </p>
       </div>
 
-      <div className="admin-header__actions" style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+      <div className="admin-header__actions" style={{ display: "flex", alignItems: "center", gap: "24px", overflow: "visible" }}>
         <NotificationDropdown />
         
         <button
@@ -52,15 +52,6 @@ export default function Header() {
         <div style={{ width: "1px", height: "24px", background: "var(--border)" }}></div>
         <UserMenu />
       </div>
-
-      <style jsx>{`
-        .theme-toggle-btn:hover {
-          background: var(--surface);
-          border-color: var(--primary);
-          color: var(--primary);
-          transform: translateY(-2px);
-        }
-      `}</style>
     </header>
   );
 }
