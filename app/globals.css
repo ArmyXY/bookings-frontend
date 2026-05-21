@@ -707,6 +707,106 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   text-transform: uppercase;
 }
 
+.post-login-shutter {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #111111;
+  color: white;
+  animation: shutter-screen-out 300ms ease 1800ms forwards;
+}
+
+.post-login-shutter__sign {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  background: #111111;
+  border-bottom: 4px solid var(--primary);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+.post-login-shutter__sign span {
+  color: var(--primary);
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.post-login-shutter__door {
+  position: absolute;
+  top: 86px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.25)),
+    repeating-linear-gradient(
+      to bottom,
+      #242424 0,
+      #242424 18px,
+      #161616 19px,
+      #161616 27px
+    );
+  border-top: 1px solid rgba(212, 255, 0, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transform-origin: top center;
+  animation: shutter-door-open 1500ms var(--ease-out-expo) 350ms forwards;
+}
+
+.post-login-shutter__handle {
+  position: absolute;
+  left: 50%;
+  bottom: 38px;
+  width: min(220px, 42vw);
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 28px rgba(212, 255, 0, 0.28);
+}
+
+.post-login-shutter__text {
+  position: relative;
+  z-index: 3;
+  margin: 130px 0 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.72);
+  border: 1px solid rgba(212, 255, 0, 0.22);
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@keyframes shutter-door-open {
+  0% {
+    transform: translateY(0);
+  }
+
+  72% {
+    transform: translateY(-78%);
+  }
+
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes shutter-screen-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

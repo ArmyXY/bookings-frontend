@@ -1,25 +1,27 @@
 "use client";
 
 import { useTheme } from "@/components/ThemeProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 import NotificationDropdown from "./NotificationDropdown";
 import UserMenu from "./UserMenu";
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
 
   return (
     <header className="admin-header">
       <div>
         <h1 className="admin-header__title" style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
-          Centro de Operaciones
+          {user?.isClient ? "Area de cliente" : "Centro de Operaciones"}
         </h1>
         <p className="admin-header__subtitle" style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginTop: "2px" }}>
-          Panel de Control Administrativo
+          {user?.isClient ? "Reservas y comercios disponibles" : "Panel de Control Administrativo"}
         </p>
       </div>
 
       <div className="admin-header__actions" style={{ display: "flex", alignItems: "center", gap: "24px", overflow: "visible" }}>
-        <NotificationDropdown />
+        {!user?.isClient ? <NotificationDropdown /> : null}
         
         <button
           onClick={toggleTheme}

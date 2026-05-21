@@ -11,6 +11,7 @@ import {
 import type { CreateBusinessDto, UpdateBusinessDto } from "@/lib/api";
 import type { Business } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 import BusinessCalendar from "@/components/businesses/BusinessCalendar";
 import StatsCard from "@/components/ui/StatsCard";
 import ModalPortal from "@/components/ui/ModalPortal";
@@ -41,6 +42,8 @@ export default function BusinessesPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [calendarBusiness, setCalendarBusiness] = useState<Business | null>(null);
+  const { user } = useAuth();
+  const isClient = Boolean(user?.isClient);
 
   useEffect(() => {
     async function loadData() {
@@ -203,15 +206,15 @@ export default function BusinessesPage() {
     <div className="page-stack page-transition">
       <section className="page-hero">
         <div style={{ position: "relative", zIndex: 2 }}>
-          <h2>Negocios</h2>
-          <p>Gestión de comercios, horarios y datos de contacto.</p>
+          <h2>{isClient ? "Comercios disponibles" : "Negocios"}</h2>
+          <p>{isClient ? "Elige donde quieres realizar tu proxima reserva." : "Gestión de comercios, horarios y datos de contacto."}</p>
         </div>
 
-        <div style={{ position: "relative", zIndex: 3 }}>
+        {!isClient ? <div style={{ position: "relative", zIndex: 3 }}>
           <button className="primary-btn" type="button" onClick={openCreateForm}>
             Nuevo negocio
           </button>
-        </div>
+        </div> : null}
 
         <div style={{
           position: "absolute",
@@ -260,7 +263,7 @@ export default function BusinessesPage() {
         />
       </section>
 
-      {isFormOpen ? (
+      {!isClient && isFormOpen ? (
         <section className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">
@@ -380,7 +383,7 @@ export default function BusinessesPage() {
                 <th>Teléfono</th>
                 <th>Dirección</th>
                 <th>Horario</th>
-                <th style={{ textAlign: "right" }}>Acciones</th>
+                <th style={{ textAlign: "right" }}>{isClient ? "Reservar" : "Acciones"}</th>
               </tr>
             </thead>
             <tbody>
@@ -417,24 +420,24 @@ export default function BusinessesPage() {
                             setCalendarBusiness(business);
                           }}
                         >
-                          Calendario
+                          {isClient ? "Ver horarios" : "Calendario"}
                         </button>
-                        <button
+                        {!isClient ? <button
                           className="secondary-btn"
                           type="button"
                           style={{ padding: "8px 16px" }}
                           onClick={() => openEditForm(business)}
                         >
                           Editar
-                        </button>
-                        <button
+                        </button> : null}
+                        {!isClient ? <button
                           className="secondary-btn"
                           type="button"
                           style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }}
                           onClick={() => setDeleteTarget(business)}
                         >
                           Eliminar
-                        </button>
+                        </button> : null}
                       </div>
                     </td>
                   </tr>

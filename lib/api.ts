@@ -7,6 +7,8 @@ import {
   Payment,
   PaymentMethod,
   PaymentStatus,
+  AuthResponse,
+  AuthUser,
 } from "./types";
 
 export type BookingStatus = AppointmentStatus;
@@ -54,22 +56,41 @@ export type UpdateBusinessDto = Partial<CreateBusinessDto>;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
+function getStoredToken() {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("auth_token") ?? "";
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getStoredToken();
   const res = await fetch(`${API_URL}${path}`, {
     cache: "no-store",
     ...options,
     headers: {
       ...(options?.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
 
   if (!res.ok) {
-    throw new Error(`Error en la peticion ${path}`);
+    const message = await res.text();
+    throw new Error(message || `Error en la peticion ${path}`);
   }
 
   const text = await res.text();
   return text ? JSON.parse(text) : (undefined as T);
+}
+
+export function login(email: string, password: string): Promise<AuthResponse> {
+  return request<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function getCurrentUser(): Promise<AuthUser> {
+  return request<AuthUser>("/auth/me");
 }
 
 export function getAppointments(): Promise<Booking[]> {

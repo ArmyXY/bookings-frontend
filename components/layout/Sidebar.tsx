@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 const menuItems = [
   {
@@ -68,6 +69,10 @@ export default function Sidebar({
   onToggle: () => void;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const visibleItems = user?.isClient
+    ? menuItems.filter((item) => item.href === "/bookings" || item.href === "/businesses")
+    : menuItems;
 
   return (
     <aside className="admin-sidebar">
@@ -113,7 +118,7 @@ export default function Sidebar({
       </div>
 
       <nav className="admin-sidebar__nav">
-        {menuItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
