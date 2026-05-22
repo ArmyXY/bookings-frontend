@@ -2,8 +2,18 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import gsap from "gsap";
+import { useAuth } from "@/components/providers/AuthProvider";
+
+function getInitials(name?: string) {
+  if (!name) return "U";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,15 +21,8 @@ export default function UserMenu() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGSVGElement>(null);
-  const router = useRouter();
-
-  // Mock User Data
-  const user = {
-    name: "Alvaro",
-    email: "alvaro@example.com",
-    role: "Administrator",
-    initials: "AL"
-  };
+  const { logout, user } = useAuth();
+  const initials = getInitials(user?.name);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -33,7 +36,7 @@ export default function UserMenu() {
 
   useEffect(() => {
     if (isOpen) {
-      setShouldRender(true);
+      return;
     } else {
       // Animate out
       if (menuRef.current) {
@@ -82,16 +85,13 @@ export default function UserMenu() {
     }
   }, [shouldRender, isOpen]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_data");
-    router.push("/login");
-  };
-
   return (
     <div className="user-menu-wrapper" ref={dropdownRef} style={{ position: "relative" }}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isOpen) setShouldRender(true);
+          setIsOpen(!isOpen);
+        }}
         style={{
           background: "none",
           border: "none",
@@ -104,7 +104,7 @@ export default function UserMenu() {
         }}
         className="user-menu-trigger"
       >
-        <div className="admin-avatar" style={{ margin: 0 }}>{user.initials}</div>
+        <div className="admin-avatar" style={{ margin: 0 }}>{initials}</div>
         <svg
           ref={arrowRef}
           width="12"
@@ -147,8 +147,11 @@ export default function UserMenu() {
             borderBottom: "1.5px solid var(--border)",
             background: "rgba(212, 255, 0, 0.03)"
           }}>
-            <p style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "var(--text)" }}>{user.name}</p>
-            <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</p>
+            <p style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "var(--text)" }}>{user?.name}</p>
+            <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email}</p>
+            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--primary)", fontWeight: 800, textTransform: "uppercase" }}>
+              {user?.isClient ? "Cliente" : "Usuario interno"}
+            </p>
           </div>
 
           {/* Menu Options */}
@@ -177,6 +180,7 @@ export default function UserMenu() {
               Ver perfil
             </Link>
 
+            {!user?.isClient ? (
             <Link 
               href="/settings" 
               onClick={() => setIsOpen(false)}
@@ -200,11 +204,12 @@ export default function UserMenu() {
               </svg>
               Configuración
             </Link>
+            ) : null}
 
             <div style={{ margin: "8px 0", borderTop: "1px solid var(--border)" }}></div>
 
             <button
-              onClick={handleLogout}
+              onClick={logout}
               style={{
                 width: "100%",
                 background: "none",

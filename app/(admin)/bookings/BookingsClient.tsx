@@ -9,6 +9,7 @@ import type {
 } from "@/lib/api";
 import {
   createAppointment,
+  createCustomer,
   deleteAppointment,
   getBusinesses,
   getCustomers,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/api";
 import type { Business, Customer } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 import StatsCard from "@/components/ui/StatsCard";
 import ModalPortal from "@/components/ui/ModalPortal";
 
@@ -84,19 +86,42 @@ export default function BookingsClient({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+  const { user } = useAuth();
+  const isClient = Boolean(user?.isClient);
 
   useEffect(() => {
     async function loadRelations() {
       try {
-        const [customersData, businessesData] = await Promise.all([
+        const [loadedCustomers, businessesData] = await Promise.all([
           getCustomers(),
           getBusinesses(),
         ]);
+        let customersData = loadedCustomers;
+        let defaultCustomerId = customersData[0]?.id ?? 0;
+
+        if (isClient && user) {
+          let clientCustomer = customersData.find(
+            (customer) => customer.email.toLowerCase() === user.email.toLowerCase()
+          );
+
+          if (!clientCustomer) {
+            clientCustomer = await createCustomer({
+              name: user.name,
+              email: user.email,
+            });
+            customersData = [clientCustomer, ...customersData];
+          }
+
+          defaultCustomerId = clientCustomer.id;
+          setCurrentCustomer(clientCustomer);
+        }
+
         setCustomers(customersData);
         setBusinesses(businessesData);
         setCreateForm((prev) => ({
           ...prev,
-          customerId: customersData[0]?.id ?? 0,
+          customerId: defaultCustomerId,
           businessId: businessesData[0]?.id ?? 0,
         }));
       } catch {
@@ -105,21 +130,36 @@ export default function BookingsClient({
     }
 
     loadRelations();
-  }, []);
+  }, [isClient, user]);
 
   const filteredBookings = useMemo(() => {
-    if (statusFilter === "all") return bookings;
-    return bookings.filter((booking) => booking.status === statusFilter);
-  }, [bookings, statusFilter]);
+    if (isClient && !currentCustomer) return [];
+    const roleBookings =
+      isClient && currentCustomer
+        ? bookings.filter((booking) => booking.customerId === currentCustomer.id)
+        : bookings;
+    if (statusFilter === "all") return roleBookings;
+    return roleBookings.filter((booking) => booking.status === statusFilter);
+  }, [bookings, currentCustomer, isClient, statusFilter]);
+
+  const visibleBookings = useMemo(
+    () =>
+      isClient && !currentCustomer
+        ? []
+        : isClient && currentCustomer
+        ? bookings.filter((booking) => booking.customerId === currentCustomer.id)
+        : bookings,
+    [bookings, currentCustomer, isClient]
+  );
 
   const counts = useMemo(
     () => ({
-      total: bookings.length,
-      pending: bookings.filter((booking) => booking.status === "pendiente").length,
-      confirmed: bookings.filter((booking) => booking.status === "confirmado").length,
-      paid: bookings.filter((booking) => booking.status === "completado").length,
+      total: visibleBookings.length,
+      pending: visibleBookings.filter((booking) => booking.status === "pendiente").length,
+      confirmed: visibleBookings.filter((booking) => booking.status === "confirmado").length,
+      paid: visibleBookings.filter((booking) => booking.status === "completado").length,
     }),
-    [bookings]
+    [visibleBookings]
   );
 
   function updateCreateForm<K extends keyof CreateBookingDto>(
@@ -139,7 +179,7 @@ export default function BookingsClient({
   function resetCreateForm() {
     setCreateForm({
       ...emptyForm,
-      customerId: customers[0]?.id ?? 0,
+      customerId: currentCustomer?.id ?? customers[0]?.id ?? 0,
       businessId: businesses[0]?.id ?? 0,
     });
   }
@@ -204,8 +244,18 @@ export default function BookingsClient({
     setErrorMessage("");
 
     try {
-      const created = await createAppointment(createForm);
-      setBookings((prev) => [created, ...prev]);
+      const payload = {
+        ...createForm,
+        status: isClient ? "pendiente" as BookingStatus : createForm.status,
+        customerId: currentCustomer?.id ?? createForm.customerId,
+      };
+      const created = await createAppointment(payload);
+      const enrichedCreated = {
+        ...created,
+        customer: currentCustomer ?? created.customer,
+        business: businesses.find((business) => business.id === created.businessId) ?? created.business,
+      };
+      setBookings((prev) => [enrichedCreated, ...prev]);
       resetCreateForm();
       setIsCreateOpen(false);
       setSuccessMessage("Reserva creada correctamente.");
@@ -345,7 +395,7 @@ export default function BookingsClient({
           onChange={(e) => updateForm("time", e.target.value)}
           required
         />
-        <select
+        {!isClient ? <select
           className="select"
           value={form.status}
           onChange={(e) => updateForm("status", e.target.value as BookingStatus)}
@@ -355,8 +405,8 @@ export default function BookingsClient({
               {label}
             </option>
           ))}
-        </select>
-        <select
+        </select> : null}
+        {!isClient ? <select
           className="select"
           value={form.customerId}
           onChange={(e) => updateForm("customerId", Number(e.target.value))}
@@ -368,7 +418,7 @@ export default function BookingsClient({
               {customer.name}
             </option>
           ))}
-        </select>
+        </select> : null}
         <select
           className="select"
           value={form.businessId}
@@ -398,12 +448,12 @@ export default function BookingsClient({
     <div className="page-stack">
       <section className="page-hero">
         <div style={{ position: "relative", zIndex: 2 }}>
-          <h2>Listado de reservas</h2>
-          <p>Gestion de reservas con cliente, negocio y pagos relacionados.</p>
+          <h2>{isClient ? "Mis reservas" : "Listado de reservas"}</h2>
+          <p>{isClient ? "Consulta tus reservas y solicita una nueva cita." : "Gestion de reservas con cliente, negocio y pagos relacionados."}</p>
         </div>
 
         <div style={{ position: "relative", zIndex: 3 }}>
-          <button className="primary-btn" type="button" onClick={openCreateForm}>
+          <button className="primary-btn" type="button" onClick={openCreateForm} disabled={isClient && !currentCustomer}>
             Nueva reserva
           </button>
         </div>
@@ -428,7 +478,7 @@ export default function BookingsClient({
 
       <section className="kpi-grid">
         <StatsCard
-          title="Total reservas"
+          title={isClient ? "Mis reservas" : "Total reservas"}
           value={String(counts.total)}
           subtitle="Registros disponibles"
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>}
@@ -475,7 +525,7 @@ export default function BookingsClient({
         </section>
       ) : null}
 
-      {editingBookingId !== null ? (
+      {!isClient && editingBookingId !== null ? (
         <section className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Editar reserva #{editingBookingId}</h3>
@@ -485,7 +535,7 @@ export default function BookingsClient({
           </div>
 
           <form onSubmit={handleEditSubmit} className="page-stack" style={{ gap: 16 }}>
-            {renderBookingForm(editForm, updateEditForm)}
+          {renderBookingForm(editForm, updateEditForm)}
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
             <div className="message-row">
               <button className="primary-btn" type="submit" disabled={loadingEdit}>
@@ -496,7 +546,7 @@ export default function BookingsClient({
         </section>
       ) : null}
 
-      {deleteTargetId !== null && (
+      {!isClient && deleteTargetId !== null && (
         <ModalPortal>
           <div
             className="modal-backdrop"
@@ -567,9 +617,9 @@ export default function BookingsClient({
               <th>Fecha</th>
               <th>Hora</th>
               <th>Servicio</th>
-              <th>Cliente</th>
+              {!isClient ? <th>Cliente</th> : null}
               <th>Estado</th>
-              <th style={{ textAlign: "right" }}>Acciones</th>
+              {!isClient ? <th style={{ textAlign: "right" }}>Acciones</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -579,9 +629,9 @@ export default function BookingsClient({
                 <td>{formatDate(booking.date)}</td>
                 <td>{booking.time}</td>
                 <td style={{ fontWeight: 600 }}>{booking.serviceName}</td>
-                <td>{getCustomerName(booking)}</td>
+                {!isClient ? <td>{getCustomerName(booking)}</td> : null}
                 <td><StatusBadge status={booking.status} /></td>
-                <td>
+                {!isClient ? <td>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                     <button type="button" className="secondary-btn" style={{ padding: "8px 16px" }} onClick={() => openEditForm(booking)}>
                       Editar
@@ -590,11 +640,11 @@ export default function BookingsClient({
                       Eliminar
                     </button>
                   </div>
-                </td>
+                </td> : null}
               </tr>
             )) : (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>
+                <td colSpan={isClient ? 5 : 7} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>
                   <div style={{ fontSize: "28px", marginBottom: 8, opacity: 0.4 }}>∅</div>
                   No hay reservas para este filtro.
                 </td>

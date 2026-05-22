@@ -88,3 +88,17 @@ export type DashboardStats = {
     }[];
   };
 };
+
+export type AuthUser = {
+  id: number;
+  name: string;
+  email: string;
+  isClient: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AuthResponse = {
+  accessToken: string;
+  user: AuthUser;
+};
