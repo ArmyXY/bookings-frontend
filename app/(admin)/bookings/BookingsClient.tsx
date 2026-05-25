@@ -560,8 +560,8 @@ export default function BookingsClient({
       <div ref={clientPageRef} className="page-stack page-transition client-bookings-page">
         <section className="client-hero-soft client-animated">
           <div>
-            <span className="client-kicker">Area de cliente</span>
-            <h2>Reservar cita</h2>
+            <span className="client-kicker">✨ Area de cliente</span>
+            <h2>Reservar cita ⚡</h2>
             <p>Elige un negocio, selecciona fecha y hora, y consulta tus reservas desde esta misma pantalla.</p>
           </div>
 
@@ -606,7 +606,7 @@ export default function BookingsClient({
 
         <section className="section-card client-animated">
           <div className="panel-title-row">
-            <h3 className="panel-title">Negocios disponibles</h3>
+            <h3 className="panel-title">🏢 Negocios disponibles</h3>
             <span style={{ color: "var(--muted)", fontWeight: 800 }}>
               {businesses.length} disponibles
             </span>
@@ -620,10 +620,10 @@ export default function BookingsClient({
                 className={`client-business-tile client-business-tile--tone-${index % 4} client-animated ${selectedBusinessId === business.id ? "client-business-tile--active" : ""}`}
                 onClick={() => selectBusiness(business)}
               >
-                <span className="client-business-tile__title">{business.name}</span>
+                <span className="client-business-tile__title">⚡ {business.name}</span>
                 <span className="client-business-tile__address">{business.address}</span>
                 <span className="client-business-tile__hours">
-                  {business.openingTime} - {business.closingTime}
+                  🕒 {business.openingTime} - {business.closingTime}
                 </span>
               </button>
             ))}
@@ -634,7 +634,7 @@ export default function BookingsClient({
           <section ref={clientBookingPanelRef} className="section-card client-booking-panel">
             <div className="panel-title-row">
               <div>
-                <h3 className="panel-title">Calendario de {selectedBusiness.name}</h3>
+                <h3 className="panel-title">📅 Calendario de {selectedBusiness.name}</h3>
                 <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
                   Selecciona fecha, hora y servicio para solicitar tu reserva.
                 </p>
@@ -694,7 +694,7 @@ export default function BookingsClient({
                   type="submit"
                   disabled={loadingCreate || !createForm.time || !currentCustomer}
                 >
-                  {loadingCreate ? "Guardando..." : "Crear reserva"}
+                  {loadingCreate ? "Guardando..." : "Crear reserva ✨"}
                 </button>
               </div>
             </form>
@@ -703,7 +703,7 @@ export default function BookingsClient({
 
         <section className="section-card client-animated">
           <div className="panel-title-row">
-            <h3 className="panel-title">Mis reservas</h3>
+            <h3 className="panel-title">🎟️ Mis reservas</h3>
             <span style={{ color: "var(--muted)", fontWeight: 800 }}>
               {filteredBookings.length} reservas
             </span>
@@ -766,12 +766,12 @@ export default function BookingsClient({
                       <div>
                         <span className="client-reservation-card__meta">#{booking.id}</span>
                         <h4>{booking.serviceName}</h4>
-                        <p>{getBusinessName(booking)}</p>
+                        <p>📍 {getBusinessName(booking)}</p>
                       </div>
                       <div>
                         <strong>{formatDate(booking.date)}</strong>
-                        <span>{booking.time.slice(0, 5)} - {statusLabels[booking.status]}</span>
-                        <span>Pago: {getPaymentMethodLabel(booking)}</span>
+                        <span>🕒 {booking.time.slice(0, 5)} - {statusLabels[booking.status]}</span>
+                        <span>💳 Pago: {getPaymentMethodLabel(booking)}</span>
                       </div>
                       <div className="client-reservation-actions">
                         <button type="button" className="secondary-btn" onClick={() => openEditForm(booking)}>
@@ -993,10 +993,11 @@ export default function BookingsClient({
             justify-content: space-between;
             gap: 16px;
             padding: 24px;
-            border: 1.5px solid var(--border);
+            border: 1.5px solid rgba(212, 255, 0, 0.28);
             border-radius: var(--radius-md);
             background:
-              linear-gradient(135deg, rgba(212, 255, 0, 0.08), transparent 58%),
+              radial-gradient(circle at 88% 12%, rgba(212, 255, 0, 0.3), transparent 28%),
+              linear-gradient(135deg, rgba(212, 255, 0, 0.16), transparent 58%),
               var(--surface);
             color: var(--text);
             text-align: left;
@@ -1012,8 +1013,14 @@ export default function BookingsClient({
             position: absolute;
             inset: 0;
             background:
-              radial-gradient(circle at 92% 8%, rgba(212, 255, 0, 0.16), transparent 30%),
-              linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+              linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 44%),
+              repeating-linear-gradient(
+                to bottom,
+                rgba(212, 255, 0, 0.08) 0,
+                rgba(212, 255, 0, 0.08) 1px,
+                transparent 1px,
+                transparent 18px
+              );
             opacity: 1;
             pointer-events: none;
           }
@@ -1043,7 +1050,7 @@ export default function BookingsClient({
           .client-business-tile--active {
             border-color: var(--tile-color);
             transform: translateY(-4px);
-            box-shadow: 0 14px 30px rgba(212, 255, 0, 0.14);
+            box-shadow: 0 16px 34px rgba(212, 255, 0, 0.26);
           }
 
           .client-business-tile__title {
@@ -1053,19 +1060,21 @@ export default function BookingsClient({
           }
 
           .client-business-tile__address {
-            color: var(--muted);
+            color: var(--text);
+            opacity: 0.8;
             line-height: 1.35;
           }
 
           .client-business-tile__hours {
             width: fit-content;
             border-radius: 999px;
-            background: var(--primary-soft);
-            border: 1px solid rgba(212, 255, 0, 0.3);
-            color: var(--text);
-            padding: 8px 12px;
+            background: var(--primary);
+            border: 1px solid rgba(212, 255, 0, 0.82);
+            color: #111111;
+            padding: 9px 14px;
             font-size: 13px;
             font-weight: 800;
+            box-shadow: 0 0 18px rgba(212, 255, 0, 0.24);
           }
 
           .client-slots-grid {
@@ -1076,9 +1085,11 @@ export default function BookingsClient({
 
           .client-slot {
             min-height: 48px;
-            border: 1.5px solid var(--border);
+            border: 1.5px solid rgba(212, 255, 0, 0.28);
             border-radius: var(--radius-sm);
-            background: var(--surface);
+            background:
+              linear-gradient(135deg, rgba(212, 255, 0, 0.12), transparent 60%),
+              var(--surface);
             color: var(--text);
             font-weight: 800;
             cursor: pointer;
@@ -1092,9 +1103,10 @@ export default function BookingsClient({
 
           .client-slot:not(:disabled):hover {
             border-color: var(--slot-color);
-            background: var(--primary-soft);
+            background: var(--primary);
+            color: #111111;
             transform: translateY(-2px);
-            box-shadow: 0 8px 18px rgba(212, 255, 0, 0.14);
+            box-shadow: 0 10px 24px rgba(212, 255, 0, 0.28);
           }
 
           .client-slot:disabled {
@@ -1107,7 +1119,7 @@ export default function BookingsClient({
             background: var(--slot-color);
             border-color: var(--slot-color);
             color: #111111;
-            box-shadow: 0 0 22px rgba(212, 255, 0, 0.22);
+            box-shadow: 0 0 26px rgba(212, 255, 0, 0.34);
           }
 
           .client-reservation-list {
@@ -1125,7 +1137,7 @@ export default function BookingsClient({
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             background:
-              linear-gradient(90deg, rgba(212, 255, 0, 0.12), transparent 46%),
+              linear-gradient(90deg, rgba(212, 255, 0, 0.18), transparent 46%),
               var(--surface);
             box-shadow: var(--shadow-sm);
             border-left: 5px solid var(--reservation-color);
@@ -1163,7 +1175,26 @@ export default function BookingsClient({
 
           [data-theme="dark"] .client-business-tile__title,
           [data-theme="dark"] .client-business-tile__hours {
-            color: white;
+            color: #FFFFFF;
+          }
+
+          [data-theme="dark"] .client-business-tile,
+          [data-theme="dark"] .client-slot,
+          [data-theme="dark"] .client-reservation-card {
+            background:
+              linear-gradient(135deg, rgba(212, 255, 0, 0.18), transparent 58%),
+              #1E1E1E;
+          }
+
+          [data-theme="dark"] .client-business-tile__address,
+          [data-theme="dark"] .client-reservation-card p,
+          [data-theme="dark"] .client-reservation-card span {
+            color: #F5F5F5;
+            opacity: 0.86;
+          }
+
+          [data-theme="dark"] .client-business-tile__hours {
+            color: #111111;
           }
 
           [data-theme="dark"] .client-session-card {
