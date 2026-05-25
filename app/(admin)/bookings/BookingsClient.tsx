@@ -15,6 +15,7 @@ import {
   getBusinesses,
   getCustomers,
   updateAppointment,
+  updatePayment,
 } from "@/lib/api";
 import { PaymentMethod, type Business, type Customer } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
@@ -99,6 +100,10 @@ function getPaymentMethodLabel(booking: Booking) {
   return method ? paymentMethodLabels[method] : "Pendiente";
 }
 
+function getPendingPayment(booking: Booking) {
+  return booking.payments?.find((payment) => payment.status !== "pagado") ?? null;
+}
+
 export default function BookingsClient({
   initialBookings,
   initialError = "",
@@ -115,6 +120,7 @@ export default function BookingsClient({
   const [statusFilter, setStatusFilter] = useState<"all" | BookingStatus>("all");
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [businessActionId, setBusinessActionId] = useState<number | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState(initialError);
@@ -127,6 +133,7 @@ export default function BookingsClient({
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isClient = Boolean(user?.isClient);
+  const isBusiness = user?.role === "business";
 
   useEffect(() => {
     async function loadRelations() {
@@ -209,22 +216,29 @@ export default function BookingsClient({
 
   const filteredBookings = useMemo(() => {
     if (isClient && !currentCustomer) return [];
+    if (isBusiness && !user?.businessId) return [];
     const roleBookings =
       isClient && currentCustomer
         ? bookings.filter((booking) => booking.customerId === currentCustomer.id)
+        : isBusiness
+        ? bookings.filter((booking) => booking.businessId === user?.businessId)
         : bookings;
     if (statusFilter === "all") return roleBookings;
     return roleBookings.filter((booking) => booking.status === statusFilter);
-  }, [bookings, currentCustomer, isClient, statusFilter]);
+  }, [bookings, currentCustomer, isBusiness, isClient, statusFilter, user?.businessId]);
 
   const visibleBookings = useMemo(
     () =>
       isClient && !currentCustomer
         ? []
+        : isBusiness && !user?.businessId
+        ? []
         : isClient && currentCustomer
         ? bookings.filter((booking) => booking.customerId === currentCustomer.id)
+        : isBusiness
+        ? bookings.filter((booking) => booking.businessId === user?.businessId)
         : bookings,
-    [bookings, currentCustomer, isClient]
+    [bookings, currentCustomer, isBusiness, isClient, user?.businessId]
   );
 
   const counts = useMemo(
@@ -440,6 +454,68 @@ export default function BookingsClient({
       });
     } finally {
       setLoadingEdit(false);
+    }
+  }
+
+  async function handleBusinessStatus(booking: Booking, status: Extract<BookingStatus, "confirmado" | "cancelado">) {
+    if (!isBusiness || booking.businessId !== user?.businessId) return;
+
+    setBusinessActionId(booking.id);
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    try {
+      const updated = await updateAppointment(booking.id, { status });
+      setBookings((prev) =>
+        prev.map((item) =>
+          item.id === booking.id
+            ? {
+                ...item,
+                ...updated,
+                customer: item.customer,
+                business: item.business,
+                payments: item.payments,
+              }
+            : item
+        )
+      );
+      setSuccessMessage(`Reserva ${status === "confirmado" ? "confirmada" : "cancelada"} correctamente.`);
+    } catch {
+      setErrorMessage("No se pudo actualizar la reserva.");
+    } finally {
+      setBusinessActionId(null);
+    }
+  }
+
+  async function handleBusinessPayment(booking: Booking) {
+    if (!isBusiness || booking.businessId !== user?.businessId) return;
+    const payment = getPendingPayment(booking);
+    if (!payment) return;
+
+    setBusinessActionId(booking.id);
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    try {
+      const updatedPayment = await updatePayment(payment.id, { status: "pagado" });
+      setBookings((prev) =>
+        prev.map((item) =>
+          item.id === booking.id
+            ? {
+                ...item,
+                status: "completado",
+                payments: item.payments?.map((existingPayment) =>
+                  existingPayment.id === updatedPayment.id ? updatedPayment : existingPayment
+                ),
+              }
+            : item
+        )
+      );
+      setSuccessMessage("Pago confirmado correctamente.");
+    } catch {
+      setErrorMessage("No se pudo confirmar el pago.");
+    } finally {
+      setBusinessActionId(null);
     }
   }
 
@@ -1231,15 +1307,21 @@ export default function BookingsClient({
     <div className="page-stack">
       <section className="page-hero">
         <div style={{ position: "relative", zIndex: 2 }}>
-          <h2>{isClient ? "Mis reservas" : "Listado de reservas"}</h2>
-          <p>{isClient ? "Consulta tus reservas y solicita una nueva cita." : "Gestion de reservas con cliente, negocio y pagos relacionados."}</p>
+          <h2>{isBusiness ? "Reservas del negocio" : isClient ? "Mis reservas" : "Listado de reservas"}</h2>
+          <p>
+            {isBusiness
+              ? "Gestiona solo las reservas de tu negocio: confirma, cancela y valida pagos."
+              : isClient
+              ? "Consulta tus reservas y solicita una nueva cita."
+              : "Gestion de reservas con cliente, negocio y pagos relacionados."}
+          </p>
         </div>
 
-        <div style={{ position: "relative", zIndex: 3 }}>
+        {!isBusiness ? <div style={{ position: "relative", zIndex: 3 }}>
           <button className="primary-btn" type="button" onClick={openCreateForm} disabled={isClient && !currentCustomer}>
             Nueva reserva
           </button>
-        </div>
+        </div> : null}
 
         <div style={{
           position: "absolute",
@@ -1261,7 +1343,7 @@ export default function BookingsClient({
 
       <section className="kpi-grid">
         <StatsCard
-          title={isClient ? "Mis reservas" : "Total reservas"}
+          title={isBusiness ? "Reservas negocio" : isClient ? "Mis reservas" : "Total reservas"}
           value={String(counts.total)}
           subtitle="Registros disponibles"
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>}
@@ -1287,7 +1369,7 @@ export default function BookingsClient({
         />
       </section>
 
-      {isCreateOpen ? (
+      {!isBusiness && isCreateOpen ? (
         <section className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Nueva reserva</h3>
@@ -1308,7 +1390,7 @@ export default function BookingsClient({
         </section>
       ) : null}
 
-      {!isClient && editingBookingId !== null ? (
+      {!isClient && !isBusiness && editingBookingId !== null ? (
         <section className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Editar reserva #{editingBookingId}</h3>
@@ -1329,7 +1411,7 @@ export default function BookingsClient({
         </section>
       ) : null}
 
-      {!isClient && deleteTargetId !== null && (
+      {!isClient && !isBusiness && deleteTargetId !== null && (
         <ModalPortal>
           <div
             className="modal-backdrop"
@@ -1418,12 +1500,46 @@ export default function BookingsClient({
                 <td><StatusBadge status={booking.status} /></td>
                 {!isClient ? <td>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                    <button type="button" className="secondary-btn" style={{ padding: "8px 16px" }} onClick={() => openEditForm(booking)}>
-                      Editar
-                    </button>
-                    <button type="button" className="secondary-btn" style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }} onClick={() => openDeleteModal(booking.id)}>
-                      Eliminar
-                    </button>
+                    {isBusiness ? (
+                      <>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          style={{ padding: "8px 16px" }}
+                          disabled={businessActionId === booking.id || booking.status === "confirmado" || booking.status === "completado"}
+                          onClick={() => handleBusinessStatus(booking, "confirmado")}
+                        >
+                          Confirmar
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.18)", color: "#FF3B30" }}
+                          disabled={businessActionId === booking.id || booking.status === "cancelado" || booking.status === "completado"}
+                          onClick={() => handleBusinessStatus(booking, "cancelado")}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          className="primary-btn"
+                          style={{ padding: "8px 16px", fontSize: "13px" }}
+                          disabled={businessActionId === booking.id || !getPendingPayment(booking)}
+                          onClick={() => handleBusinessPayment(booking)}
+                        >
+                          Confirmar pago
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" className="secondary-btn" style={{ padding: "8px 16px" }} onClick={() => openEditForm(booking)}>
+                          Editar
+                        </button>
+                        <button type="button" className="secondary-btn" style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }} onClick={() => openDeleteModal(booking.id)}>
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td> : null}
               </tr>

@@ -10,6 +10,7 @@ import { useGsapButtons } from "@/hooks/useGsapButtons";
 import { useAuth } from "@/components/providers/AuthProvider";
 
 const clientAllowedPaths = ["/bookings", "/businesses", "/profile"];
+const businessAllowedPaths = ["/bookings", "/profile"];
 
 export default function AdminLayout({
   children,
@@ -26,6 +27,10 @@ export default function AdminLayout({
     if (isLoading) return;
     if (!isAuthenticated) {
       router.replace("/login");
+      return;
+    }
+    if (user?.role === "business" && !businessAllowedPaths.includes(pathname)) {
+      router.replace("/bookings");
       return;
     }
     if (user?.isClient && !clientAllowedPaths.includes(pathname)) {
@@ -48,11 +53,15 @@ export default function AdminLayout({
     return null;
   }
 
+  if (user?.role === "business" && !businessAllowedPaths.includes(pathname)) {
+    return null;
+  }
+
   if (user?.isClient && !clientAllowedPaths.includes(pathname)) {
     return null;
   }
 
-  if (user?.isClient) {
+  if (user?.isClient || user?.role === "business") {
     return (
       <div className="client-auth-shell">
         <PostLoginShutter />

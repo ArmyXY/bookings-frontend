@@ -6,6 +6,11 @@ import { login } from "@/lib/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { markPostLoginShutter } from "@/components/layout/PostLoginShutter";
 
+function getHomePath(user: { isClient: boolean; role?: string }) {
+  if (user.role === "business") return "/bookings";
+  return user.isClient ? "/bookings" : "/dashboard";
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,7 +21,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
-      router.replace(user.isClient ? "/bookings" : "/dashboard");
+      router.replace(getHomePath(user));
     }
   }, [isAuthenticated, isLoading, router, user]);
 
@@ -29,7 +34,7 @@ export default function LoginPage() {
       const response = await login(email.trim(), password);
       setSession(response.accessToken, response.user);
       markPostLoginShutter();
-      router.replace(response.user.isClient ? "/bookings" : "/dashboard");
+      router.replace(getHomePath(response.user));
     } catch {
       setErrorMessage("Credenciales invalidas o backend no disponible.");
     } finally {
@@ -76,7 +81,7 @@ export default function LoginPage() {
             Bienvenido de nuevo
           </h1>
           <p style={{ color: "var(--muted)", fontSize: "14px", margin: 0 }}>
-            Accede como usuario interno o como cliente.
+            Accede como usuario interno, negocio o cliente.
           </p>
         </div>
 
@@ -131,6 +136,8 @@ export default function LoginPage() {
         <div style={{ marginTop: "32px", textAlign: "center" }}>
           <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
             Usuario: usuario@demo.com / usuario123
+            <br />
+            Negocio: peluqueria@demo.com / peluqueria123
             <br />
             Cliente: cliente@demo.com / cliente123
           </p>
