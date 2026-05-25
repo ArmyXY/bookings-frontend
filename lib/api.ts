@@ -21,6 +21,7 @@ export interface CreateBookingDto {
   customerId: number;
   businessId: number;
   serviceName: string;
+  paymentMethod?: PaymentMethod;
 }
 
 export type UpdateBookingDto = Partial<CreateBookingDto>;

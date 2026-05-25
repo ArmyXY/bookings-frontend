@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import gsap from "gsap";
 import type {
   Booking,
   BookingStatus,
@@ -15,9 +16,10 @@ import {
   getCustomers,
   updateAppointment,
 } from "@/lib/api";
-import type { Business, Customer } from "@/lib/types";
+import { PaymentMethod, type Business, type Customer } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useTheme } from "@/components/ThemeProvider";
 import StatsCard from "@/components/ui/StatsCard";
 import ModalPortal from "@/components/ui/ModalPortal";
 
@@ -28,6 +30,12 @@ const statusLabels: Record<BookingStatus, string> = {
   cancelado: "Cancelada",
 };
 
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  [PaymentMethod.CASH]: "Efectivo",
+  [PaymentMethod.CARD]: "Tarjeta",
+  [PaymentMethod.TRANSFER]: "Transferencia",
+};
+
 const emptyForm: CreateBookingDto = {
   date: "",
   time: "",
@@ -35,6 +43,7 @@ const emptyForm: CreateBookingDto = {
   customerId: 0,
   businessId: 0,
   serviceName: "",
+  paymentMethod: PaymentMethod.CASH,
 };
 
 function StatusBadge({ status }: { status: BookingStatus }) {
@@ -53,7 +62,28 @@ function formatDate(date: string) {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(new Date(`${date.slice(0, 10)}T00:00:00`));
+}
+
+function getTodayValue() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
+function buildHourlySlots(business: Business) {
+  const [openHour, openMinute] = business.openingTime.split(":").map(Number);
+  const [closeHour, closeMinute] = business.closingTime.split(":").map(Number);
+  const open = openHour * 60 + openMinute;
+  const close = closeHour * 60 + closeMinute;
+  const slots: string[] = [];
+
+  for (let minute = open; minute < close; minute += 60) {
+    const hour = Math.floor(minute / 60);
+    const minutes = minute % 60;
+    slots.push(`${String(hour).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
+  }
+
+  return slots.length ? slots : [business.openingTime.slice(0, 5)];
 }
 
 function getCustomerName(booking: Booking) {
@@ -62,6 +92,11 @@ function getCustomerName(booking: Booking) {
 
 function getBusinessName(booking: Booking) {
   return booking.business?.name ?? `Negocio #${booking.businessId}`;
+}
+
+function getPaymentMethodLabel(booking: Booking) {
+  const method = booking.payments?.[0]?.method;
+  return method ? paymentMethodLabels[method] : "Pendiente";
 }
 
 export default function BookingsClient({
@@ -76,10 +111,10 @@ export default function BookingsClient({
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [createForm, setCreateForm] = useState<CreateBookingDto>(emptyForm);
   const [editForm, setEditForm] = useState<CreateBookingDto>(emptyForm);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | BookingStatus>("all");
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
-  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState(initialError);
@@ -87,7 +122,10 @@ export default function BookingsClient({
   const [editingBookingId, setEditingBookingId] = useState<number | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
-  const { user } = useAuth();
+  const clientPageRef = useRef<HTMLDivElement>(null);
+  const clientBookingPanelRef = useRef<HTMLElement>(null);
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const isClient = Boolean(user?.isClient);
 
   useEffect(() => {
@@ -119,10 +157,12 @@ export default function BookingsClient({
 
         setCustomers(customersData);
         setBusinesses(businessesData);
+        setSelectedBusinessId(businessesData[0]?.id ?? null);
         setCreateForm((prev) => ({
           ...prev,
           customerId: defaultCustomerId,
           businessId: businessesData[0]?.id ?? 0,
+          date: prev.date || getTodayValue(),
         }));
       } catch {
         setErrorMessage("No se pudieron cargar clientes o negocios para las reservas.");
@@ -131,6 +171,41 @@ export default function BookingsClient({
 
     loadRelations();
   }, [isClient, user]);
+
+  useEffect(() => {
+    if (!isClient || !clientPageRef.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        ".client-animated",
+        { opacity: 0, y: 18, scale: 0.98 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.55,
+          ease: "power3.out",
+          stagger: 0.08,
+        }
+      );
+    }, clientPageRef);
+
+    return () => ctx.revert();
+  }, [isClient, businesses.length]);
+
+  useEffect(() => {
+    if (!isClient || !isCreateOpen || !clientBookingPanelRef.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        clientBookingPanelRef.current,
+        { opacity: 0, y: 22, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "power3.out" }
+      );
+    });
+
+    return () => ctx.revert();
+  }, [isClient, isCreateOpen, selectedBusinessId]);
 
   const filteredBookings = useMemo(() => {
     if (isClient && !currentCustomer) return [];
@@ -161,6 +236,32 @@ export default function BookingsClient({
     }),
     [visibleBookings]
   );
+
+  const selectedBusiness = useMemo(
+    () => businesses.find((business) => business.id === selectedBusinessId) ?? null,
+    [businesses, selectedBusinessId]
+  );
+
+  const selectedDayBookings = useMemo(() => {
+    if (!selectedBusiness || !createForm.date) return [];
+    return bookings.filter(
+      (booking) =>
+        booking.businessId === selectedBusiness.id &&
+        booking.date.startsWith(createForm.date)
+    );
+  }, [bookings, createForm.date, selectedBusiness]);
+
+  const availableSlots = useMemo(() => {
+    if (!selectedBusiness) return [];
+    const bookedTimes = new Set(
+      selectedDayBookings.map((booking) => booking.time.slice(0, 5))
+    );
+
+    return buildHourlySlots(selectedBusiness).map((slot) => ({
+      value: slot,
+      isBooked: bookedTimes.has(slot),
+    }));
+  }, [selectedBusiness, selectedDayBookings]);
 
   function updateCreateForm<K extends keyof CreateBookingDto>(
     key: K,
@@ -201,6 +302,20 @@ export default function BookingsClient({
     setErrorMessage("");
     resetCreateForm();
     setIsCreateOpen(false);
+  }
+
+  function selectBusiness(business: Business) {
+    setSelectedBusinessId(business.id);
+    setSuccessMessage("");
+    setErrorMessage("");
+    setIsCreateOpen(true);
+    setCreateForm((prev) => ({
+      ...prev,
+      businessId: business.id,
+      customerId: currentCustomer?.id ?? prev.customerId,
+      date: prev.date || getTodayValue(),
+      time: "",
+    }));
   }
 
   function openEditForm(booking: Booking) {
@@ -295,7 +410,18 @@ export default function BookingsClient({
       };
       const updated = await updateAppointment(editingBookingId, payload);
       setBookings((prev) =>
-        prev.map((booking) => (booking.id === editingBookingId ? updated : booking))
+        prev.map((booking) =>
+          booking.id === editingBookingId
+            ? {
+                ...booking,
+                ...updated,
+                customer: booking.customer,
+                business:
+                  businesses.find((business) => business.id === updated.businessId) ??
+                  booking.business,
+              }
+            : booking
+        )
       );
       setEditingBookingId(null);
       resetEditForm();
@@ -314,34 +440,6 @@ export default function BookingsClient({
       });
     } finally {
       setLoadingEdit(false);
-    }
-  }
-
-  async function updateBookingStatus(id: number, status: BookingStatus) {
-    setUpdatingStatusId(id);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    try {
-      const updated = await updateAppointment(id, { status });
-      setBookings((prev) =>
-        prev.map((booking) => (booking.id === id ? { ...booking, ...updated } : booking))
-      );
-      setSuccessMessage("Estado actualizado correctamente.");
-      addNotification({
-        title: "Estado Cambiado",
-        description: `Reserva #${id} marcada como "${statusLabels[status]}".`,
-        type: "info"
-      });
-    } catch {
-      setErrorMessage("No se pudo actualizar el estado de la reserva.");
-      addNotification({
-        title: "Error de Estado",
-        description: "No se pudo cambiar el estado de la reserva.",
-        type: "error"
-      });
-    } finally {
-      setUpdatingStatusId(null);
     }
   }
 
@@ -377,7 +475,8 @@ export default function BookingsClient({
 
   function renderBookingForm(
     form: CreateBookingDto,
-    updateForm: <K extends keyof CreateBookingDto>(key: K, value: CreateBookingDto[K]) => void
+    updateForm: <K extends keyof CreateBookingDto>(key: K, value: CreateBookingDto[K]) => void,
+    includePaymentMethod = false
   ) {
     return (
       <div className="form-grid">
@@ -440,6 +539,659 @@ export default function BookingsClient({
           placeholder="Servicio"
           required
         />
+        {includePaymentMethod ? (
+          <select
+            className="select input--full"
+            value={form.paymentMethod ?? PaymentMethod.CASH}
+            onChange={(e) => updateForm("paymentMethod", e.target.value as PaymentMethod)}
+            required
+          >
+            <option value={PaymentMethod.CASH}>Metodo de pago: Efectivo</option>
+            <option value={PaymentMethod.CARD}>Metodo de pago: Tarjeta</option>
+            <option value={PaymentMethod.TRANSFER}>Metodo de pago: Transferencia</option>
+          </select>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (isClient) {
+    return (
+      <div ref={clientPageRef} className="page-stack page-transition client-bookings-page">
+        <section className="client-hero-soft client-animated">
+          <div>
+            <span className="client-kicker">Area de cliente</span>
+            <h2>Reservar cita</h2>
+            <p>Elige un negocio, selecciona fecha y hora, y consulta tus reservas desde esta misma pantalla.</p>
+          </div>
+
+          <div className="client-session-card">
+            <div className="client-avatar">{user?.name?.slice(0, 1).toUpperCase() ?? "C"}</div>
+            <div>
+              <strong>{user?.name ?? "Cliente"}</strong>
+              <span>{user?.email}</span>
+            </div>
+            <button
+              type="button"
+              className="client-theme-btn"
+              onClick={toggleTheme}
+              title={theme === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
+            >
+              {theme === "light" ? (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              ) : (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              )}
+            </button>
+            <button type="button" className="secondary-btn client-logout-btn" onClick={logout}>
+              Cerrar sesion
+            </button>
+          </div>
+        </section>
+
+        {successMessage ? <div className="message-success">{successMessage}</div> : null}
+        {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
+
+        <section className="section-card client-animated">
+          <div className="panel-title-row">
+            <h3 className="panel-title">Negocios disponibles</h3>
+            <span style={{ color: "var(--muted)", fontWeight: 800 }}>
+              {businesses.length} disponibles
+            </span>
+          </div>
+
+          <div className="client-business-grid">
+            {businesses.map((business, index) => (
+              <button
+                key={business.id}
+                type="button"
+                className={`client-business-tile client-business-tile--tone-${index % 4} client-animated ${selectedBusinessId === business.id ? "client-business-tile--active" : ""}`}
+                onClick={() => selectBusiness(business)}
+              >
+                <span className="client-business-tile__title">{business.name}</span>
+                <span className="client-business-tile__address">{business.address}</span>
+                <span className="client-business-tile__hours">
+                  {business.openingTime} - {business.closingTime}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {selectedBusiness && isCreateOpen ? (
+          <section ref={clientBookingPanelRef} className="section-card client-booking-panel">
+            <div className="panel-title-row">
+              <div>
+                <h3 className="panel-title">Calendario de {selectedBusiness.name}</h3>
+                <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
+                  Selecciona fecha, hora y servicio para solicitar tu reserva.
+                </p>
+              </div>
+              <button type="button" className="secondary-btn" onClick={closeCreateForm}>
+                Cerrar
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} className="page-stack" style={{ gap: 20 }}>
+              <div className="form-grid">
+                <input
+                  className="input"
+                  type="date"
+                  min={getTodayValue()}
+                  value={createForm.date}
+                  onChange={(e) => updateCreateForm("date", e.target.value)}
+                  required
+                />
+                <input
+                  className="input"
+                  type="text"
+                  value={createForm.serviceName}
+                  onChange={(e) => updateCreateForm("serviceName", e.target.value)}
+                  placeholder="Servicio"
+                  required
+                />
+                <select
+                  className="select"
+                  value={createForm.paymentMethod ?? PaymentMethod.CASH}
+                  onChange={(e) => updateCreateForm("paymentMethod", e.target.value as PaymentMethod)}
+                  required
+                >
+                  <option value={PaymentMethod.CASH}>Pago en efectivo</option>
+                  <option value={PaymentMethod.CARD}>Pago con tarjeta</option>
+                  <option value={PaymentMethod.TRANSFER}>Transferencia</option>
+                </select>
+              </div>
+
+              <div className="client-slots-grid">
+                {availableSlots.map((slot, index) => (
+                  <button
+                    key={slot.value}
+                    type="button"
+                    className={`client-slot client-slot--tone-${index % 4} ${createForm.time === slot.value ? "client-slot--active" : ""}`}
+                    disabled={slot.isBooked}
+                    onClick={() => updateCreateForm("time", slot.value)}
+                  >
+                    {slot.value}
+                  </button>
+                ))}
+              </div>
+
+              <div className="message-row">
+                <button
+                  className="primary-btn"
+                  type="submit"
+                  disabled={loadingCreate || !createForm.time || !currentCustomer}
+                >
+                  {loadingCreate ? "Guardando..." : "Crear reserva"}
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null}
+
+        <section className="section-card client-animated">
+          <div className="panel-title-row">
+            <h3 className="panel-title">Mis reservas</h3>
+            <span style={{ color: "var(--muted)", fontWeight: 800 }}>
+              {filteredBookings.length} reservas
+            </span>
+          </div>
+
+          <div className="client-reservation-list">
+            {filteredBookings.length > 0 ? (
+              filteredBookings.map((booking, index) => (
+                <article key={booking.id} className={`client-reservation-card client-reservation-card--tone-${index % 4}`}>
+                  {editingBookingId === booking.id ? (
+                    <form onSubmit={handleEditSubmit} className="page-stack" style={{ gap: 16 }}>
+                      <div className="form-grid">
+                        <input
+                          className="input"
+                          type="date"
+                          min={getTodayValue()}
+                          value={editForm.date.slice(0, 10)}
+                          onChange={(e) => updateEditForm("date", e.target.value)}
+                          required
+                        />
+                        <input
+                          className="input"
+                          type="time"
+                          value={editForm.time.slice(0, 5)}
+                          onChange={(e) => updateEditForm("time", e.target.value)}
+                          required
+                        />
+                        <select
+                          className="select"
+                          value={editForm.businessId}
+                          onChange={(e) => updateEditForm("businessId", Number(e.target.value))}
+                          required
+                        >
+                          {businesses.map((business) => (
+                            <option key={business.id} value={business.id}>
+                              {business.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          className="input"
+                          type="text"
+                          value={editForm.serviceName}
+                          onChange={(e) => updateEditForm("serviceName", e.target.value)}
+                          placeholder="Servicio"
+                          required
+                        />
+                      </div>
+                      <div className="message-row">
+                        <button className="secondary-btn" type="button" onClick={closeEditForm}>
+                          Cancelar
+                        </button>
+                        <button className="primary-btn" type="submit" disabled={loadingEdit}>
+                          {loadingEdit ? "Guardando..." : "Guardar cambios"}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="client-reservation-card__meta">#{booking.id}</span>
+                        <h4>{booking.serviceName}</h4>
+                        <p>{getBusinessName(booking)}</p>
+                      </div>
+                      <div>
+                        <strong>{formatDate(booking.date)}</strong>
+                        <span>{booking.time.slice(0, 5)} - {statusLabels[booking.status]}</span>
+                        <span>Pago: {getPaymentMethodLabel(booking)}</span>
+                      </div>
+                      <div className="client-reservation-actions">
+                        <button type="button" className="secondary-btn" onClick={() => openEditForm(booking)}>
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          style={{ borderColor: "rgba(255, 59, 48, 0.25)", color: "#FF3B30" }}
+                          onClick={() => openDeleteModal(booking.id)}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </article>
+              ))
+            ) : (
+              <div className="empty-table-cell">
+                Todavia no tienes reservas registradas.
+              </div>
+            )}
+          </div>
+        </section>
+
+        {deleteTargetId !== null ? (
+          <ModalPortal>
+            <div
+              className="modal-backdrop"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="client-delete-modal-title"
+              aria-describedby="client-delete-modal-description"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeDeleteModal();
+              }}
+            >
+              <div className="modal-card">
+                <div className="modal-icon">!</div>
+                <h3 id="client-delete-modal-title" className="modal-title">
+                  Eliminar reserva
+                </h3>
+                <p id="client-delete-modal-description" className="modal-text">
+                  Seguro que quieres eliminar la reserva #{deleteTargetId}? Esta accion no se puede deshacer.
+                </p>
+                <div className="modal-actions">
+                  <button type="button" className="secondary-btn" onClick={closeDeleteModal}>
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-btn"
+                    onClick={confirmDelete}
+                    disabled={deletingBookingId === deleteTargetId}
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    {deletingBookingId === deleteTargetId ? (
+                      <>
+                        <div className="spinner spinner--sm"></div>
+                        <span>Eliminando...</span>
+                      </>
+                    ) : (
+                      "Eliminar"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </ModalPortal>
+        ) : null}
+
+        <style jsx>{`
+          .client-bookings-page {
+            max-width: 1180px;
+          }
+
+          .client-hero-soft {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+            padding: 48px;
+            border: 1.5px solid rgba(212, 255, 0, 0.24);
+            border-radius: var(--radius-lg);
+            color: white;
+            background:
+              radial-gradient(circle at 88% 20%, rgba(212, 255, 0, 0.2), transparent 32%),
+              linear-gradient(135deg, #111111 0%, #171717 54%, #0B0B0B 100%);
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+          }
+
+          .client-hero-soft::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+              linear-gradient(90deg, rgba(212, 255, 0, 0.12), transparent 18%),
+              repeating-linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.04) 0,
+                rgba(255, 255, 255, 0.04) 1px,
+                transparent 1px,
+                transparent 22px
+              );
+            pointer-events: none;
+          }
+
+          .client-hero-soft > * {
+            position: relative;
+            z-index: 1;
+          }
+
+          .client-hero-soft h2 {
+            margin: 0;
+            font-size: 48px;
+            letter-spacing: -0.04em;
+          }
+
+          .client-hero-soft p {
+            max-width: 620px;
+            margin: 10px 0 0;
+            color: #A1A1A1;
+            font-size: 20px;
+          }
+
+          .client-kicker {
+            display: inline-flex;
+            margin-bottom: 10px;
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+          }
+
+          .client-session-card {
+            min-width: 300px;
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr) 44px;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border: 1.5px solid rgba(212, 255, 0, 0.26);
+            border-radius: var(--radius-md);
+            background:
+              linear-gradient(135deg, rgba(30, 30, 30, 0.92), rgba(17, 17, 17, 0.82)),
+              #111111;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+          }
+
+          .client-avatar {
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            border-radius: 16px;
+            background: var(--primary);
+            color: #111111;
+            font-size: 20px;
+            font-weight: 900;
+            box-shadow: 0 0 24px rgba(212, 255, 0, 0.28);
+          }
+
+          .client-theme-btn {
+            width: 44px;
+            height: 44px;
+            display: grid;
+            place-items: center;
+            border: 1.5px solid rgba(212, 255, 0, 0.22);
+            border-radius: 14px;
+            background: rgba(212, 255, 0, 0.08);
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out-expo);
+          }
+
+          .client-theme-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(212, 255, 0, 0.18);
+          }
+
+          .client-session-card strong,
+          .client-session-card span {
+            display: block;
+          }
+
+          .client-session-card span {
+            margin-top: 2px;
+            color: #A1A1A1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .client-logout-btn {
+            grid-column: 1 / -1;
+            width: 100%;
+            justify-content: center;
+            padding: 12px 18px;
+            background: transparent;
+            color: white;
+            border-color: rgba(212, 255, 0, 0.22);
+          }
+
+          .client-business-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+          }
+
+          .client-business-tile {
+            min-height: 170px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 24px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-md);
+            background:
+              linear-gradient(135deg, rgba(212, 255, 0, 0.08), transparent 58%),
+              var(--surface);
+            color: var(--text);
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.25s var(--ease-out-expo);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+          }
+
+          .client-business-tile::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+              radial-gradient(circle at 92% 8%, rgba(212, 255, 0, 0.16), transparent 30%),
+              linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+            opacity: 1;
+            pointer-events: none;
+          }
+
+          .client-business-tile > * {
+            position: relative;
+            z-index: 1;
+          }
+
+          .client-business-tile--tone-0 {
+            --tile-color: var(--primary);
+          }
+
+          .client-business-tile--tone-1 {
+            --tile-color: var(--primary);
+          }
+
+          .client-business-tile--tone-2 {
+            --tile-color: var(--primary);
+          }
+
+          .client-business-tile--tone-3 {
+            --tile-color: var(--primary);
+          }
+
+          .client-business-tile:hover,
+          .client-business-tile--active {
+            border-color: var(--tile-color);
+            transform: translateY(-4px);
+            box-shadow: 0 14px 30px rgba(212, 255, 0, 0.14);
+          }
+
+          .client-business-tile__title {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--text);
+          }
+
+          .client-business-tile__address {
+            color: var(--muted);
+            line-height: 1.35;
+          }
+
+          .client-business-tile__hours {
+            width: fit-content;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            border: 1px solid rgba(212, 255, 0, 0.3);
+            color: var(--text);
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 800;
+          }
+
+          .client-slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+            gap: 10px;
+          }
+
+          .client-slot {
+            min-height: 48px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            color: var(--text);
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s var(--ease-out-expo);
+          }
+
+          .client-slot--tone-0 { --slot-color: var(--primary); }
+          .client-slot--tone-1 { --slot-color: var(--primary); }
+          .client-slot--tone-2 { --slot-color: var(--primary); }
+          .client-slot--tone-3 { --slot-color: var(--primary); }
+
+          .client-slot:not(:disabled):hover {
+            border-color: var(--slot-color);
+            background: var(--primary-soft);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(212, 255, 0, 0.14);
+          }
+
+          .client-slot:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            text-decoration: line-through;
+          }
+
+          .client-slot--active {
+            background: var(--slot-color);
+            border-color: var(--slot-color);
+            color: #111111;
+            box-shadow: 0 0 22px rgba(212, 255, 0, 0.22);
+          }
+
+          .client-reservation-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+          }
+
+          .client-reservation-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 220px auto;
+            align-items: center;
+            gap: 18px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background:
+              linear-gradient(90deg, rgba(212, 255, 0, 0.12), transparent 46%),
+              var(--surface);
+            box-shadow: var(--shadow-sm);
+            border-left: 5px solid var(--reservation-color);
+          }
+
+          .client-reservation-card--tone-0 { --reservation-color: var(--primary); }
+          .client-reservation-card--tone-1 { --reservation-color: var(--primary); }
+          .client-reservation-card--tone-2 { --reservation-color: var(--primary); }
+          .client-reservation-card--tone-3 { --reservation-color: var(--primary); }
+
+          .client-reservation-card h4 {
+            margin: 4px 0;
+            font-size: 22px;
+          }
+
+          .client-reservation-card p,
+          .client-reservation-card span {
+            margin: 0;
+            color: var(--muted);
+          }
+
+          .client-reservation-card__meta {
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: var(--reservation-color) !important;
+          }
+
+          .client-reservation-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+
+          [data-theme="dark"] .client-business-tile__title,
+          [data-theme="dark"] .client-business-tile__hours {
+            color: white;
+          }
+
+          [data-theme="dark"] .client-session-card {
+            background:
+              linear-gradient(135deg, rgba(42, 42, 42, 0.9), rgba(17, 17, 17, 0.82)),
+              #111111;
+          }
+
+          @media (max-width: 760px) {
+            .client-hero-soft {
+              flex-direction: column;
+              align-items: stretch;
+              padding: 24px;
+            }
+
+            .client-hero-soft h2 {
+              font-size: 34px;
+            }
+
+            .client-session-card {
+              min-width: 0;
+            }
+
+            .client-reservation-card {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}</style>
       </div>
     );
   }
@@ -514,7 +1266,7 @@ export default function BookingsClient({
           </div>
 
           <form onSubmit={handleCreateSubmit} className="page-stack" style={{ gap: 16 }}>
-            {renderBookingForm(createForm, updateCreateForm)}
+            {renderBookingForm(createForm, updateCreateForm, true)}
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
             <div className="message-row">
               <button className="primary-btn" type="submit" disabled={loadingCreate}>
@@ -618,6 +1370,7 @@ export default function BookingsClient({
               <th>Hora</th>
               <th>Servicio</th>
               {!isClient ? <th>Cliente</th> : null}
+              <th>Metodo de pago</th>
               <th>Estado</th>
               {!isClient ? <th style={{ textAlign: "right" }}>Acciones</th> : null}
             </tr>
@@ -630,6 +1383,7 @@ export default function BookingsClient({
                 <td>{booking.time}</td>
                 <td style={{ fontWeight: 600 }}>{booking.serviceName}</td>
                 {!isClient ? <td>{getCustomerName(booking)}</td> : null}
+                <td>{getPaymentMethodLabel(booking)}</td>
                 <td><StatusBadge status={booking.status} /></td>
                 {!isClient ? <td>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -644,7 +1398,7 @@ export default function BookingsClient({
               </tr>
             )) : (
               <tr>
-                <td colSpan={isClient ? 5 : 7} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>
+                <td colSpan={isClient ? 6 : 8} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>
                   <div style={{ fontSize: "28px", marginBottom: 8, opacity: 0.4 }}>∅</div>
                   No hay reservas para este filtro.
                 </td>

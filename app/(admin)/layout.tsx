@@ -52,6 +52,16 @@ export default function AdminLayout({
     return null;
   }
 
+  if (user?.isClient) {
+    return (
+      <div className="client-auth-shell">
+        <PostLoginShutter />
+        <RouteLoadingOverlay />
+        <main className="admin-content">{children}</main>
+      </div>
+    );
+  }
+
 
   return (
     <div className={`admin-shell ${isCollapsed ? "admin-shell--collapsed" : ""}`}>

@@ -35,7 +35,9 @@ export function useGsapButtons() {
     };
 
     const attachToExisting = () => {
-      const buttons = document.querySelectorAll(".primary-btn, .secondary-btn, .admin-sidebar__brand-inner, .theme-toggle-btn");
+      const buttons = document.querySelectorAll(
+        ".primary-btn, .secondary-btn, .danger-btn, .filter-pill, .admin-sidebar__brand-inner, .theme-toggle-btn, .client-theme-btn, .client-business-tile, .client-slot"
+      );
       buttons.forEach(attachAnimations);
     };
 
