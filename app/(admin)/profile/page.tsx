@@ -13,6 +13,20 @@ function getInitials(name?: string) {
     .join("");
 }
 
+function getRoleLabel(role?: string) {
+  if (role === "admin") return "Administrador";
+  if (role === "business") return "Negocio";
+  if (role === "client") return "Cliente";
+  return "Sin rol";
+}
+
+function getRoleDescription(role?: string) {
+  if (role === "admin") return "Administrador: acceso completo al sistema";
+  if (role === "business") return "Negocio: gestion de sus reservas";
+  if (role === "client") return "Cliente: reservas propias y comercios";
+  return "Rol no reconocido";
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
 
@@ -56,7 +70,7 @@ export default function ProfilePage() {
           </div>
           <h3 style={{ margin: 0, fontSize: "28px", fontWeight: 800 }}>{user?.name}</h3>
           <p style={{ margin: "4px 0 0", color: "var(--primary)", fontWeight: 700, textTransform: "uppercase", fontSize: "12px", letterSpacing: "0.1em" }}>
-            {user?.isClient ? "Cliente" : "Usuario interno"}
+            {getRoleLabel(user?.role)}
           </p>
         </div>
 
@@ -81,7 +95,7 @@ export default function ProfilePage() {
                 Tipo de acceso
               </label>
               <p style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>
-                {user?.isClient ? "Cliente: reservas propias y comercios" : "Usuario: acceso administrativo completo"}
+                {getRoleDescription(user?.role)}
               </p>
             </div>
           </div>

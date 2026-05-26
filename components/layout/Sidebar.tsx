@@ -70,9 +70,12 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const visibleItems = user?.isClient
-    ? menuItems.filter((item) => item.href === "/bookings" || item.href === "/businesses")
-    : menuItems;
+  const visibleItems = menuItems.filter((item) => {
+    if (user?.role === "admin") return true;
+    if (user?.role === "business") return item.href === "/bookings";
+    if (user?.role === "client") return item.href === "/bookings" || item.href === "/businesses";
+    return false;
+  });
 
   return (
     <aside className="admin-sidebar">

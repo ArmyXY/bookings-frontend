@@ -8,20 +8,21 @@ import UserMenu from "./UserMenu";
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   return (
     <header className="admin-header">
       <div>
         <h1 className="admin-header__title" style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
-          {user?.isClient ? "Area de cliente" : "Centro de Operaciones"}
+          {isAdmin ? "Centro de Operaciones" : "Area de usuario"}
         </h1>
         <p className="admin-header__subtitle" style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginTop: "2px" }}>
-          {user?.isClient ? "Reservas y comercios disponibles" : "Panel de Control Administrativo"}
+          {isAdmin ? "Panel de Control Administrativo" : "Reservas y comercios disponibles"}
         </p>
       </div>
 
       <div className="admin-header__actions" style={{ display: "flex", alignItems: "center", gap: "24px", overflow: "visible" }}>
-        {!user?.isClient ? <NotificationDropdown /> : null}
+        {isAdmin ? <NotificationDropdown /> : null}
         
         <button
           onClick={toggleTheme}

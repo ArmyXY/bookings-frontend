@@ -29,11 +29,11 @@ export default function AdminLayout({
       router.replace("/login");
       return;
     }
-    if (user?.role === "business" && !businessAllowedPaths.includes(pathname)) {
+    if (user?.role === "client" && !clientAllowedPaths.includes(pathname)) {
       router.replace("/bookings");
       return;
     }
-    if (user?.isClient && !clientAllowedPaths.includes(pathname)) {
+    if (user?.role === "business" && !businessAllowedPaths.includes(pathname)) {
       router.replace("/bookings");
     }
   }, [isAuthenticated, isLoading, pathname, router, user]);
@@ -53,15 +53,15 @@ export default function AdminLayout({
     return null;
   }
 
+  if (user?.role === "client" && !clientAllowedPaths.includes(pathname)) {
+    return null;
+  }
+
   if (user?.role === "business" && !businessAllowedPaths.includes(pathname)) {
     return null;
   }
 
-  if (user?.isClient && !clientAllowedPaths.includes(pathname)) {
-    return null;
-  }
-
-  if (user?.isClient || user?.role === "business") {
+  if (user?.role === "client" || user?.role === "business") {
     return (
       <div className="client-auth-shell">
         <PostLoginShutter />

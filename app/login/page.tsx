@@ -7,8 +7,9 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { markPostLoginShutter } from "@/components/layout/PostLoginShutter";
 
 function getHomePath(user: { isClient: boolean; role?: string }) {
+  if (user.role === "admin") return "/dashboard";
   if (user.role === "business") return "/bookings";
-  return user.isClient ? "/bookings" : "/dashboard";
+  return "/bookings";
 }
 
 export default function LoginPage() {
@@ -81,7 +82,7 @@ export default function LoginPage() {
             Bienvenido de nuevo
           </h1>
           <p style={{ color: "var(--muted)", fontSize: "14px", margin: 0 }}>
-            Accede como usuario interno, negocio o cliente.
+            Accede como administrador, negocio o cliente.
           </p>
         </div>
 
@@ -93,7 +94,7 @@ export default function LoginPage() {
             <input
               className="input"
               type="email"
-              placeholder="usuario@demo.com"
+              placeholder="admin@demo.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -135,9 +136,9 @@ export default function LoginPage() {
 
         <div style={{ marginTop: "32px", textAlign: "center" }}>
           <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
-            Usuario: usuario@demo.com / usuario123
+            Admin: admin@demo.com / admin123
             <br />
-            Negocio: peluqueria@demo.com / peluqueria123
+            Negocio: manager@demo.com / manager123
             <br />
             Cliente: cliente@demo.com / cliente123
           </p>

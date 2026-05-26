@@ -15,6 +15,13 @@ function getInitials(name?: string) {
     .join("");
 }
 
+function getRoleLabel(role?: string) {
+  if (role === "admin") return "Administrador";
+  if (role === "business") return "Negocio";
+  if (role === "client") return "Cliente";
+  return "Sin rol";
+}
+
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
@@ -150,7 +157,7 @@ export default function UserMenu() {
             <p style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "var(--text)" }}>{user?.name}</p>
             <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email}</p>
             <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--primary)", fontWeight: 800, textTransform: "uppercase" }}>
-              {user?.isClient ? "Cliente" : "Usuario interno"}
+              {getRoleLabel(user?.role)}
             </p>
           </div>
 
@@ -180,7 +187,7 @@ export default function UserMenu() {
               Ver perfil
             </Link>
 
-            {!user?.isClient ? (
+            {user?.role === "admin" ? (
             <Link 
               href="/settings" 
               onClick={() => setIsOpen(false)}

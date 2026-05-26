@@ -12,6 +12,7 @@ import {
   createAppointment,
   createCustomer,
   deleteAppointment,
+  getAppointments,
   getBusinesses,
   getCustomers,
   updateAppointment,
@@ -133,13 +134,16 @@ export default function BookingsClient({
   const clientBookingPanelRef = useRef<HTMLElement>(null);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const isClient = Boolean(user?.isClient);
+  const isClient = user?.role === "client";
   const isBusiness = user?.role === "business";
 
   useEffect(() => {
     async function loadRelations() {
+      if (!user) return;
+
       try {
-        const [loadedCustomers, businessesData] = await Promise.all([
+        const [loadedBookings, loadedCustomers, businessesData] = await Promise.all([
+          getAppointments(),
           getCustomers(),
           getBusinesses(),
         ]);
@@ -163,6 +167,7 @@ export default function BookingsClient({
           setCurrentCustomer(clientCustomer);
         }
 
+        setBookings(loadedBookings);
         setCustomers(customersData);
         setBusinesses(businessesData);
         setSelectedBusinessId(businessesData[0]?.id ?? null);
@@ -173,7 +178,7 @@ export default function BookingsClient({
           date: prev.date || getTodayValue(),
         }));
       } catch {
-        setErrorMessage("No se pudieron cargar clientes o negocios para las reservas.");
+        setErrorMessage("No se pudieron cargar las reservas. Revisa la sesion y el backend.");
       }
     }
 
@@ -793,17 +798,26 @@ export default function BookingsClient({
               </div>
 
               <div className="client-slots-grid">
-                {availableSlots.map((slot, index) => (
-                  <button
-                    key={slot.value}
-                    type="button"
-                    className={`client-slot client-slot--tone-${index % 4} ${createForm.time === slot.value ? "client-slot--active" : ""}`}
-                    disabled={slot.isBooked}
-                    onClick={() => updateCreateForm("time", slot.value)}
-                  >
-                    {slot.value}
-                  </button>
-                ))}
+                {availableSlots.map((slot, index) => {
+                  const isAvailable = !slot.isBooked;
+
+                  return (
+                    <button
+                      key={slot.value}
+                      type="button"
+                      className={`client-slot client-slot--tone-${index % 4} ${createForm.time === slot.value ? "client-slot--active" : ""}`}
+                      disabled={!isAvailable}
+                      title={isAvailable ? "Horario disponible" : "Horario no disponible"}
+                      aria-label={`${slot.value} - ${isAvailable ? "disponible" : "no disponible"}`}
+                      onClick={() => updateCreateForm("time", slot.value)}
+                    >
+                      <span className="client-slot__icon" aria-hidden="true">
+                        {isAvailable ? "🔓" : "🔒"}
+                      </span>
+                      <span>{slot.value}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="message-row">
@@ -1227,6 +1241,15 @@ export default function BookingsClient({
             font-weight: 800;
             cursor: pointer;
             transition: all 0.2s var(--ease-out-expo);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          }
+
+          .client-slot__icon {
+            font-size: 14px;
+            line-height: 1;
           }
 
           .client-slot--tone-0 { --slot-color: var(--primary); }
