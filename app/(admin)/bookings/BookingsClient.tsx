@@ -700,11 +700,18 @@ export default function BookingsClient({
 
           <div className="client-business-grid">
             {businesses.map((business, index) => (
-              <button
+              <article
                 key={business.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={`client-business-tile client-business-tile--tone-${index % 4} client-animated ${selectedBusinessId === business.id ? "client-business-tile--active" : ""}`}
                 onClick={() => selectBusiness(business)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    selectBusiness(business);
+                  }
+                }}
               >
                 <span className="client-business-tile__title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--primary)' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -733,7 +740,7 @@ export default function BookingsClient({
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--muted)' }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   {business.openingTime} - {business.closingTime}
                 </span>
-              </button>
+              </article>
             ))}
           </div>
         </section>
