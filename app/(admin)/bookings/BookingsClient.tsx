@@ -1317,11 +1317,48 @@ export default function BookingsClient({
           </p>
         </div>
 
-        {!isBusiness ? <div style={{ position: "relative", zIndex: 3 }}>
-          <button className="primary-btn" type="button" onClick={openCreateForm} disabled={isClient && !currentCustomer}>
-            Nueva reserva
-          </button>
-        </div> : null}
+        <div style={{ position: "relative", zIndex: 3 }}>
+          {isBusiness ? (
+            <div className="business-session-card">
+              <div className="business-avatar">{user?.name?.slice(0, 1).toUpperCase() ?? "N"}</div>
+              <div>
+                <strong>{user?.name ?? "Negocio"}</strong>
+                <span>{user?.email}</span>
+              </div>
+              <button
+                type="button"
+                className="business-theme-btn"
+                onClick={toggleTheme}
+                title={theme === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
+              >
+                {theme === "light" ? (
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                ) : (
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                )}
+              </button>
+              <button type="button" className="secondary-btn business-logout-btn" onClick={logout}>
+                Cerrar sesion
+              </button>
+            </div>
+          ) : (
+            <button className="primary-btn" type="button" onClick={openCreateForm} disabled={isClient && !currentCustomer}>
+              Nueva reserva
+            </button>
+          )}
+        </div>
 
         <div style={{
           position: "absolute",
@@ -1554,6 +1591,88 @@ export default function BookingsClient({
           </tbody>
         </table>
       </section>
+
+      <style jsx>{`
+        .business-session-card {
+          min-width: 300px;
+          display: grid;
+          grid-template-columns: 48px minmax(0, 1fr) 44px;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+          border: 1.5px solid rgba(212, 255, 0, 0.26);
+          border-radius: var(--radius-md);
+          background:
+            linear-gradient(135deg, rgba(30, 30, 30, 0.92), rgba(17, 17, 17, 0.82)),
+            #111111;
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+        }
+
+        .business-avatar {
+          width: 48px;
+          height: 48px;
+          display: grid;
+          place-items: center;
+          border-radius: 16px;
+          background: var(--primary);
+          color: #111111;
+          font-size: 20px;
+          font-weight: 900;
+          box-shadow: 0 0 24px rgba(212, 255, 0, 0.28);
+        }
+
+        .business-session-card strong,
+        .business-session-card span {
+          display: block;
+        }
+
+        .business-session-card strong {
+          color: white;
+        }
+
+        .business-session-card span {
+          margin-top: 2px;
+          color: #A1A1A1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .business-theme-btn {
+          width: 44px;
+          height: 44px;
+          display: grid;
+          place-items: center;
+          border: 1.5px solid rgba(212, 255, 0, 0.22);
+          border-radius: 14px;
+          background: rgba(212, 255, 0, 0.08);
+          color: var(--primary);
+          cursor: pointer;
+          transition: all 0.2s var(--ease-out-expo);
+        }
+
+        .business-theme-btn:hover {
+          border-color: var(--primary);
+          color: var(--primary);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 24px rgba(212, 255, 0, 0.18);
+        }
+
+        .business-logout-btn {
+          grid-column: 1 / -1;
+          width: 100%;
+          justify-content: center;
+          padding: 12px 18px;
+          background: transparent;
+          color: white;
+          border-color: rgba(212, 255, 0, 0.22);
+        }
+
+        @media (max-width: 760px) {
+          .business-session-card {
+            min-width: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
