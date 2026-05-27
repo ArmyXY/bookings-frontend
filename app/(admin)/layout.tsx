@@ -11,6 +11,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 const clientAllowedPaths = ["/bookings", "/businesses", "/profile"];
 const businessAllowedPaths = ["/bookings", "/profile"];
+const publicPaths = ["/login", "/customers/nuevo"];
 
 export default function AdminLayout({
   children,
@@ -24,19 +25,29 @@ export default function AdminLayout({
   useGsapButtons();
 
   useEffect(() => {
-    if (isLoading) return;
-    if (!isAuthenticated) {
+  if (isLoading) return;
+
+  const publicPaths = ["/login", "/customers/nuevo"];
+
+  if (!isAuthenticated) {
+    if (!publicPaths.includes(pathname)) {
       router.replace("/login");
-      return;
     }
-    if (user?.role === "client" && !clientAllowedPaths.includes(pathname)) {
+    return;
+  }
+
+  if (user?.role === "client") {
+    if (!clientAllowedPaths.includes(pathname)) {
       router.replace("/bookings");
-      return;
     }
-    if (user?.role === "business" && !businessAllowedPaths.includes(pathname)) {
+  }
+
+  if (user?.role === "business") {
+    if (!businessAllowedPaths.includes(pathname)) {
       router.replace("/bookings");
     }
-  }, [isAuthenticated, isLoading, pathname, router, user]);
+  }
+}, [isAuthenticated, isLoading, pathname, router, user]);
 
   if (isLoading) {
     return (
@@ -49,17 +60,8 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  
 
-  if (user?.role === "client" && !clientAllowedPaths.includes(pathname)) {
-    return null;
-  }
-
-  if (user?.role === "business" && !businessAllowedPaths.includes(pathname)) {
-    return null;
-  }
 
   if (user?.role === "client" || user?.role === "business") {
     return (

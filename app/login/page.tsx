@@ -132,6 +132,13 @@ export default function LoginPage() {
               "Iniciar sesion"
             )}
           </button>
+          <button
+          type="button"
+          className="secondary-btn"
+          onClick={() => router.push("/customers/nuevo")}
+        >
+          Registrar nuevo cliente
+        </button>
         </form>
 
         <div style={{ marginTop: "32px", textAlign: "center" }}>
