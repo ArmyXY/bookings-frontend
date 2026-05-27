@@ -103,7 +103,7 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: "8px" }}>
-              Contrasena
+              Contraseña
             </label>
             <input
               className="input"
@@ -129,7 +129,7 @@ export default function LoginPage() {
                 <span>Iniciando...</span>
               </div>
             ) : (
-              "Iniciar sesion"
+              "Iniciar sesión"
             )}
           </button>
         </form>
