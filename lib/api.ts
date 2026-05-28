@@ -39,6 +39,7 @@ export interface CreateCustomerDto {
   name: string;
   email: string;
   phone?: string;
+  password?: string;
 }
 
 export type UpdateCustomerDto = Partial<CreateCustomerDto>;
@@ -87,6 +88,13 @@ export function login(email: string, password: string): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
+  });
+}
+
+export function register(data: any): Promise<AuthResponse> {
+  return request<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
   });
 }
 
