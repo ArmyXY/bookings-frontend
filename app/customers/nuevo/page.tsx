@@ -2,19 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import { register } from "@/lib/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { markPostLoginShutter } from "@/components/layout/PostLoginShutter";
 import { useGsapButtons } from "@/hooks/useGsapButtons";
 
-function getHomePath(user: { isClient: boolean; role?: string }) {
-  if (user.role === "admin") return "/dashboard";
-  if (user.role === "business") return "/bookings";
-  return "/bookings";
-}
-
-export default function LoginPage() {
+export default function RegisterCustomerPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -24,22 +20,28 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
-      router.replace(getHomePath(user));
+      router.replace("/bookings");
     }
   }, [isAuthenticated, isLoading, router, user]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage("");
 
     try {
-      const response = await login(email.trim(), password);
+      const response = await register({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        password,
+        role: "client"
+      });
       setSession(response.accessToken, response.user);
       markPostLoginShutter();
-      router.replace(getHomePath(response.user));
+      router.replace("/bookings");
     } catch {
-      setErrorMessage("Credenciales invalidas o backend no disponible.");
+      setErrorMessage("No se pudo crear la cuenta. Verifica que el correo no esté en uso o que el servidor esté disponible.");
     } finally {
       setLoading(false);
     }
@@ -81,14 +83,28 @@ export default function LoginPage() {
             <h2 style={{ margin: 0, color: "var(--text)", fontSize: "24px" }}>BF</h2>
           </div>
           <h1 style={{ fontSize: "24px", fontWeight: 800, margin: "0 0 8px" }}>
-            Bienvenido de nuevo
+            Crea tu cuenta
           </h1>
           <p style={{ color: "var(--muted)", fontSize: "14px", margin: 0 }}>
-            Accede como administrador, negocio o cliente.
+            Regístrate para reservar citas.
           </p>
         </div>
 
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div className="form-group">
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: "8px" }}>
+              Nombre
+            </label>
+            <input
+              className="input"
+              type="text"
+              placeholder="Tu nombre completo"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
           <div className="form-group">
             <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: "8px" }}>
               Email
@@ -96,7 +112,7 @@ export default function LoginPage() {
             <input
               className="input"
               type="email"
-              placeholder="admin@demo.com"
+              placeholder="tu@email.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -105,7 +121,20 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: "8px" }}>
-              Contrasena
+              Teléfono (opcional)
+            </label>
+            <input
+              className="input"
+              type="tel"
+              placeholder="+34 600 000 000"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: "8px" }}>
+              Contraseña
             </label>
             <input
               className="input"
@@ -128,37 +157,20 @@ export default function LoginPage() {
             {loading ? (
               <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "center" }}>
                 <div className="spinner spinner--sm" style={{ borderTopColor: "black" }}></div>
-                <span>Iniciando...</span>
+                <span>Registrando...</span>
               </div>
             ) : (
-              "Iniciar sesion"
+              "Crear cuenta"
             )}
           </button>
           <button
             type="button"
             className="secondary-btn"
-            style={{ 
-              background: "#111111", 
-              color: "white", 
-              border: "none", 
-              width: "100%", 
-              height: "52px" 
-            }}
-            onClick={() => router.push("/customers/nuevo")}
+            onClick={() => router.push("/login")}
           >
-            Nuevo usuario
+            Volver a inicio de sesión
           </button>
         </form>
-
-        <div style={{ marginTop: "32px", textAlign: "center" }}>
-          <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
-            Admin: admin@demo.com / admin123
-            <br />
-            Negocio: manager@demo.com / manager123
-            <br />
-            Cliente: cliente@demo.com / cliente123
-          </p>
-        </div>
       </div>
     </div>
   );

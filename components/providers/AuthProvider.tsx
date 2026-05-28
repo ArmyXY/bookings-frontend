@@ -53,40 +53,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    async function bootstrapSession() {
-      const storedToken = localStorage.getItem("auth_token") ?? "";
-      const storedUser = localStorage.getItem("user_data");
+  async function bootstrapSession() {
+    const storedToken = localStorage.getItem("auth_token") ?? "";
+    const storedUser = localStorage.getItem("user_data");
 
-      if (!storedToken) {
-        setIsLoading(false);
-        return;
+    // RUTAS PUBLICAS
+    const publicRoutes = ["/login", "/customers/nuevo"];
+    const currentPath = window.location.pathname;
+
+    if (!storedToken) {
+      // permitir acceso a paginas publicas
+      if (!publicRoutes.includes(currentPath)) {
+        router.replace("/login");
       }
 
-      setToken(storedToken);
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser) as AuthUser);
-        } catch {
-          localStorage.removeItem("user_data");
-        }
-      }
+      setIsLoading(false);
+      return;
+    }
 
+    setToken(storedToken);
+
+    if (storedUser) {
       try {
-        const currentUser = await getCurrentUser();
-        localStorage.setItem("user_data", JSON.stringify(currentUser));
-        setUser(currentUser);
+        setUser(JSON.parse(storedUser) as AuthUser);
       } catch {
-        localStorage.removeItem("auth_token");
         localStorage.removeItem("user_data");
-        setToken("");
-        setUser(null);
-      } finally {
-        setIsLoading(false);
       }
     }
 
-    bootstrapSession();
-  }, []);
+    try {
+      const currentUser = await getCurrentUser();
+      localStorage.setItem("user_data", JSON.stringify(currentUser));
+      setUser(currentUser);
+    } catch {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user_data");
+      setToken("");
+      setUser(null);
+
+      if (!publicRoutes.includes(currentPath)) {
+        router.replace("/login");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  bootstrapSession();
+}, [router]);
 
   const value = useMemo(
     () => ({

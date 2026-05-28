@@ -43,7 +43,7 @@ export default function BusinessesPage() {
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [calendarBusiness, setCalendarBusiness] = useState<Business | null>(null);
   const { user } = useAuth();
-  const isClient = Boolean(user?.isClient);
+  const isClient = user?.role === "client";
 
   useEffect(() => {
     async function loadData() {

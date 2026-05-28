@@ -17,6 +17,7 @@ const emptyForm: CreateCustomerDto = {
   name: "",
   email: "",
   phone: "",
+  password: "",
 };
 
 export default function CustomersPage() {
@@ -96,6 +97,7 @@ export default function CustomersPage() {
       name: customer.name,
       email: customer.email,
       phone: customer.phone ?? "",
+      password: "",
     });
     setIsFormOpen(true);
   }
@@ -112,6 +114,7 @@ export default function CustomersPage() {
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone?.trim() || undefined,
+      password: form.password?.trim() || undefined,
     };
 
     try {
@@ -250,12 +253,21 @@ export default function CustomersPage() {
                 required
               />
               <input
-                className="input input--full"
+                className="input"
                 type="tel"
                 value={form.phone}
                 onChange={(e) => updateForm("phone", e.target.value)}
                 placeholder="Teléfono"
               />
+              {editingId === null && (
+                <input
+                  className="input"
+                  type="password"
+                  value={form.password || ""}
+                  onChange={(e) => updateForm("password", e.target.value)}
+                  placeholder="Contraseña (opcional)"
+                />
+              )}
             </div>
 
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}

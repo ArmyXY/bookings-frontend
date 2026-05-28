@@ -94,6 +94,8 @@ export type AuthUser = {
   name: string;
   email: string;
   isClient: boolean;
+  role?: "client" | "admin" | "business";
+  businessId?: number | null;
   createdAt?: string;
   updatedAt?: string;
 };
