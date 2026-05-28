@@ -252,7 +252,9 @@ export default function UserMenu() {
           transform: translateX(4px);
         }
         .dropdown-item.danger:hover {
-          background: rgba(255, 59, 48, 0.05);
+          background: #FF3B30;
+          color: white !important;
+          transform: translateX(4px);
         }
       `}</style>
     </div>

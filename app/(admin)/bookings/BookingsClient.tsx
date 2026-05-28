@@ -2,6 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type {
   Booking,
   BookingStatus,
@@ -16,12 +28,14 @@ import {
   getBusinesses,
   getCustomers,
   updateAppointment,
+  updateBusiness,
   updatePayment,
 } from "@/lib/api";
 import { PaymentMethod, type Business, type Customer } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useTheme } from "@/components/ThemeProvider";
+import NotificationDropdown from "@/components/layout/NotificationDropdown";
 import StatsCard from "@/components/ui/StatsCard";
 import ModalPortal from "@/components/ui/ModalPortal";
 
@@ -36,6 +50,13 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
   [PaymentMethod.CASH]: "Efectivo",
   [PaymentMethod.CARD]: "Tarjeta",
   [PaymentMethod.TRANSFER]: "Transferencia",
+};
+
+const statusColors: Record<BookingStatus, string> = {
+  pendiente: "#F59E0B",
+  confirmado: "#10B981",
+  completado: "#3B82F6",
+  cancelado: "#EF4444",
 };
 
 const emptyForm: CreateBookingDto = {
@@ -70,6 +91,58 @@ function formatDate(date: string) {
 function getTodayValue() {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
+function formatMonthLabel(date: string) {
+  return new Intl.DateTimeFormat("es-ES", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${date}T00:00:00`));
+}
+
+function formatShortDay(date: string) {
+  return new Intl.DateTimeFormat("es-ES", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(`${date}T00:00:00`));
+}
+
+function formatWeekday(date: string) {
+  return new Intl.DateTimeFormat("es-ES", {
+    weekday: "short",
+  }).format(new Date(`${date}T00:00:00`));
+}
+
+function getMonthCalendarCells(anchorDate: string) {
+  const anchor = new Date(`${anchorDate}T00:00:00`);
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const mondayOffset = (firstDay + 6) % 7;
+  const cells: Array<string | null> = Array.from({ length: mondayOffset }, () => null);
+
+  Array.from({ length: totalDays }, (_, index) => {
+    const day = index + 1;
+    cells.push(`${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
+  });
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return cells;
+}
+
+function moveMonth(date: string, amount: number) {
+  const current = new Date(`${date}T00:00:00`);
+  const year = current.getFullYear();
+  const month = current.getMonth() + amount;
+  const selectedDay = current.getDate();
+  const targetLastDay = new Date(year, month + 1, 0).getDate();
+  const target = new Date(year, month, Math.min(selectedDay, targetLastDay));
+
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
 }
 
 function buildHourlySlots(business: Business) {
@@ -123,6 +196,12 @@ export default function BookingsClient({
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [businessActionId, setBusinessActionId] = useState<number | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<number | null>(null);
+  const [businessSelectedDate, setBusinessSelectedDate] = useState(getTodayValue());
+  const [businessScheduleForm, setBusinessScheduleForm] = useState({
+    openingTime: "09:00",
+    closingTime: "20:00",
+  });
+  const [savingSchedule, setSavingSchedule] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState(initialError);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -132,10 +211,13 @@ export default function BookingsClient({
   const [businessRatings, setBusinessRatings] = useState<Record<number, number>>({});
   const clientPageRef = useRef<HTMLDivElement>(null);
   const clientBookingPanelRef = useRef<HTMLElement>(null);
+  const businessPageRef = useRef<HTMLDivElement>(null);
+  const knownBusinessBookingIdsRef = useRef<Set<number>>(new Set());
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isClient = user?.role === "client";
   const isBusiness = user?.role === "business";
+  const { addNotification } = useNotifications();
 
   useEffect(() => {
     async function loadRelations() {
@@ -167,14 +249,32 @@ export default function BookingsClient({
           setCurrentCustomer(clientCustomer);
         }
 
+        const defaultBusinessId = isBusiness && user.businessId
+          ? user.businessId
+          : businessesData[0]?.id ?? 0;
+        const userBusiness = businessesData.find((business) => business.id === defaultBusinessId);
+
         setBookings(loadedBookings);
         setCustomers(customersData);
         setBusinesses(businessesData);
-        setSelectedBusinessId(businessesData[0]?.id ?? null);
+        setSelectedBusinessId(defaultBusinessId || null);
+        if (userBusiness) {
+          setBusinessScheduleForm({
+            openingTime: userBusiness.openingTime.slice(0, 5),
+            closingTime: userBusiness.closingTime.slice(0, 5),
+          });
+        }
+        if (isBusiness && user.businessId) {
+          knownBusinessBookingIdsRef.current = new Set(
+            loadedBookings
+              .filter((booking) => booking.businessId === user.businessId)
+              .map((booking) => booking.id)
+          );
+        }
         setCreateForm((prev) => ({
           ...prev,
           customerId: defaultCustomerId,
-          businessId: businessesData[0]?.id ?? 0,
+          businessId: defaultBusinessId,
           date: prev.date || getTodayValue(),
         }));
       } catch {
@@ -183,7 +283,7 @@ export default function BookingsClient({
     }
 
     loadRelations();
-  }, [isClient, user]);
+  }, [isBusiness, isClient, user]);
 
   useEffect(() => {
     if (!isClient || !clientPageRef.current) return;
@@ -219,6 +319,62 @@ export default function BookingsClient({
 
     return () => ctx.revert();
   }, [isClient, isCreateOpen, selectedBusinessId]);
+
+  useEffect(() => {
+    if (!isBusiness || !businessPageRef.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        ".business-animated",
+        { opacity: 0, y: 18, scale: 0.98 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.5,
+          ease: "power3.out",
+          stagger: 0.06,
+        }
+      );
+    }, businessPageRef);
+
+    return () => ctx.revert();
+  }, [isBusiness, businesses.length]);
+
+  useEffect(() => {
+    if (!isBusiness || !user?.businessId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latestBookings = await getAppointments();
+        const businessBookings = latestBookings.filter(
+          (booking) => booking.businessId === user.businessId
+        );
+        const knownIds = knownBusinessBookingIdsRef.current;
+        const newBookings = businessBookings.filter((booking) => !knownIds.has(booking.id));
+
+        if (knownIds.size > 0 && newBookings.length > 0) {
+          addNotification({
+            title: newBookings.length === 1 ? "Nueva reserva" : "Nuevas reservas",
+            description:
+              newBookings.length === 1
+                ? `${getCustomerName(newBookings[0])} ha reservado ${newBookings[0].serviceName}.`
+                : `Han entrado ${newBookings.length} reservas nuevas.`,
+            type: "info",
+          });
+        }
+
+        knownBusinessBookingIdsRef.current = new Set(
+          businessBookings.map((booking) => booking.id)
+        );
+        setBookings(latestBookings);
+      } catch {
+        setErrorMessage("No se pudieron sincronizar las reservas nuevas.");
+      }
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [addNotification, isBusiness, user?.businessId]);
 
   const filteredBookings = useMemo(() => {
     if (isClient && !currentCustomer) return [];
@@ -257,6 +413,11 @@ export default function BookingsClient({
     [visibleBookings]
   );
 
+  const currentBusiness = useMemo(
+    () => businesses.find((business) => business.id === user?.businessId) ?? null,
+    [businesses, user?.businessId]
+  );
+
   const selectedBusiness = useMemo(
     () => businesses.find((business) => business.id === selectedBusinessId) ?? null,
     [businesses, selectedBusinessId]
@@ -283,6 +444,72 @@ export default function BookingsClient({
     }));
   }, [selectedBusiness, selectedDayBookings]);
 
+  const businessTodayBookings = useMemo(
+    () =>
+      visibleBookings.filter(
+        (booking) =>
+          booking.date.startsWith(getTodayValue()) &&
+          (booking.status === "pendiente" || booking.status === "confirmado")
+      ),
+    [visibleBookings]
+  );
+
+  const businessSelectedDateBookings = useMemo(
+    () =>
+      visibleBookings.filter((booking) =>
+        booking.date.startsWith(businessSelectedDate)
+      ),
+    [businessSelectedDate, visibleBookings]
+  );
+
+  const businessDisplayBookings = useMemo(() => {
+    if (!isBusiness) return filteredBookings;
+    if (statusFilter === "all") return businessSelectedDateBookings;
+    return businessSelectedDateBookings.filter((booking) => booking.status === statusFilter);
+  }, [businessSelectedDateBookings, filteredBookings, isBusiness, statusFilter]);
+
+  const businessSlots = useMemo(() => {
+    if (!currentBusiness) return [];
+    const bookedTimes = new Set(
+      businessSelectedDateBookings.map((booking) => booking.time.slice(0, 5))
+    );
+
+    return buildHourlySlots(currentBusiness).map((slot) => ({
+      value: slot,
+      isBooked: bookedTimes.has(slot),
+      booking: businessSelectedDateBookings.find(
+        (booking) => booking.time.slice(0, 5) === slot
+      ),
+    }));
+  }, [businessSelectedDateBookings, currentBusiness]);
+
+  const businessMonthDays = useMemo(
+    () => getMonthCalendarCells(businessSelectedDate),
+    [businessSelectedDate]
+  );
+
+  const businessStatusChart = useMemo(
+    () =>
+      (Object.keys(statusLabels) as BookingStatus[]).map((status) => ({
+        name: statusLabels[status],
+        value: visibleBookings.filter((booking) => booking.status === status).length,
+        color: statusColors[status],
+      })),
+    [visibleBookings]
+  );
+
+  const businessActivityData = useMemo(() => {
+    return [...Array(7)].map((_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - index));
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      return {
+        date: formatShortDay(value),
+        reservas: visibleBookings.filter((booking) => booking.date.startsWith(value)).length,
+      };
+    });
+  }, [visibleBookings]);
+
   function updateCreateForm<K extends keyof CreateBookingDto>(
     key: K,
     value: CreateBookingDto[K]
@@ -301,7 +528,8 @@ export default function BookingsClient({
     setCreateForm({
       ...emptyForm,
       customerId: currentCustomer?.id ?? customers[0]?.id ?? 0,
-      businessId: businesses[0]?.id ?? 0,
+      businessId: isBusiness ? user?.businessId ?? 0 : businesses[0]?.id ?? 0,
+      date: getTodayValue(),
     });
   }
 
@@ -315,6 +543,13 @@ export default function BookingsClient({
     setEditingBookingId(null);
     setDeleteTargetId(null);
     resetEditForm();
+    setCreateForm((prev) => ({
+      ...prev,
+      date: prev.date || getTodayValue(),
+      businessId: isBusiness ? user?.businessId ?? prev.businessId : prev.businessId,
+      customerId: prev.customerId || customers[0]?.id || 0,
+      status: isBusiness ? "confirmado" : prev.status,
+    }));
     setIsCreateOpen(true);
   }
 
@@ -370,7 +605,15 @@ export default function BookingsClient({
     setDeleteTargetId(null);
   }
 
-  const { addNotification } = useNotifications();
+  function selectBusinessCalendarDate(date: string) {
+    setBusinessSelectedDate(date);
+    setCreateForm((prev) => ({ ...prev, date, time: "" }));
+  }
+
+  function changeBusinessMonth(amount: number) {
+    const nextDate = moveMonth(businessSelectedDate, amount);
+    selectBusinessCalendarDate(nextDate);
+  }
 
   async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -383,6 +626,7 @@ export default function BookingsClient({
         ...createForm,
         status: isClient ? "pendiente" as BookingStatus : createForm.status,
         customerId: currentCustomer?.id ?? createForm.customerId,
+        businessId: isBusiness ? user?.businessId ?? createForm.businessId : createForm.businessId,
       };
       const created = await createAppointment(payload);
       const enrichedCreated = {
@@ -525,6 +769,45 @@ export default function BookingsClient({
     }
   }
 
+  async function handleBusinessScheduleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!currentBusiness) return;
+
+    if (businessScheduleForm.openingTime >= businessScheduleForm.closingTime) {
+      setErrorMessage("La apertura debe ser anterior al cierre.");
+      return;
+    }
+
+    setSavingSchedule(true);
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    try {
+      const updated = await updateBusiness(currentBusiness.id, {
+        openingTime: businessScheduleForm.openingTime,
+        closingTime: businessScheduleForm.closingTime,
+      });
+      setBusinesses((prev) =>
+        prev.map((business) => (business.id === updated.id ? updated : business))
+      );
+      setSuccessMessage("Horario actualizado correctamente.");
+      addNotification({
+        title: "Horario actualizado",
+        description: `${updated.name} abre de ${updated.openingTime} a ${updated.closingTime}.`,
+        type: "success",
+      });
+    } catch {
+      setErrorMessage("No se pudo actualizar el horario del negocio.");
+      addNotification({
+        title: "Error de horario",
+        description: "No se pudieron guardar los nuevos horarios.",
+        type: "error",
+      });
+    } finally {
+      setSavingSchedule(false);
+    }
+  }
+
   async function confirmDelete() {
     if (deleteTargetId === null) return;
 
@@ -600,7 +883,7 @@ export default function BookingsClient({
             </option>
           ))}
         </select> : null}
-        <select
+        {!isBusiness ? <select
           className="select"
           value={form.businessId}
           onChange={(e) => updateForm("businessId", Number(e.target.value))}
@@ -612,7 +895,14 @@ export default function BookingsClient({
               {business.name} ({business.openingTime}-{business.closingTime})
             </option>
           ))}
-        </select>
+        </select> : (
+          <input
+            className="input"
+            type="text"
+            value={currentBusiness ? `${currentBusiness.name} (${currentBusiness.openingTime}-${currentBusiness.closingTime})` : "Negocio"}
+            readOnly
+          />
+        )}
         <input
           className="input input--full"
           type="text"
@@ -1391,7 +1681,7 @@ export default function BookingsClient({
 
   return (
     <div className="page-stack">
-      <section className="page-hero">
+      <section className={`page-hero ${isBusiness ? "business-page-hero" : ""}`}>
         <div style={{ position: "relative", zIndex: 2 }}>
           <h2>{isBusiness ? "Reservas del negocio" : isClient ? "Mis reservas" : "Listado de reservas"}</h2>
           <p>
@@ -1410,6 +1700,9 @@ export default function BookingsClient({
               <div>
                 <strong>{user?.name ?? "Negocio"}</strong>
                 <span>{user?.email}</span>
+              </div>
+              <div className="business-notification-btn">
+                <NotificationDropdown />
               </div>
               <button
                 type="button"
@@ -1437,6 +1730,9 @@ export default function BookingsClient({
               </button>
               <button type="button" className="secondary-btn business-logout-btn" onClick={logout}>
                 Cerrar sesión
+              </button>
+              <button type="button" className="primary-btn business-new-btn" onClick={openCreateForm}>
+                Nueva reserva
               </button>
             </div>
           ) : (
@@ -1466,9 +1762,9 @@ export default function BookingsClient({
 
       <section className="kpi-grid">
         <StatsCard
-          title={isBusiness ? "Reservas negocio" : isClient ? "Mis reservas" : "Total reservas"}
-          value={String(counts.total)}
-          subtitle="Registros disponibles"
+          title={isBusiness ? "Reservas hoy" : isClient ? "Mis reservas" : "Total reservas"}
+          value={String(isBusiness ? businessTodayBookings.length : counts.total)}
+          subtitle={isBusiness ? "Pendientes o confirmadas" : "Registros disponibles"}
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>}
         />
         <StatsCard
@@ -1492,7 +1788,209 @@ export default function BookingsClient({
         />
       </section>
 
-      {!isBusiness && isCreateOpen ? (
+      {isBusiness ? (
+        <div ref={businessPageRef} className="business-dashboard-grid">
+          <section className="section-card business-animated">
+            <div className="panel-title-row">
+              <div>
+                <h3 className="panel-title">Actividad reciente</h3>
+                <p className="business-panel-copy">Reservas de los ultimos 7 dias y reparto por estado.</p>
+              </div>
+            </div>
+            <div className="business-charts">
+              <div className="business-chart">
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={businessActivityData}>
+                    <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="var(--border)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--muted)", fontSize: 12, fontWeight: 700 }} />
+                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "var(--muted)", fontSize: 12, fontWeight: 700 }} />
+                    <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16 }} />
+                    <Bar dataKey="reservas" fill="var(--primary)" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="business-chart business-chart--compact">
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie data={businessStatusChart} dataKey="value" innerRadius={56} outerRadius={88} paddingAngle={6}>
+                      {businessStatusChart.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="business-chart-legend">
+                  {businessStatusChart.map((entry) => (
+                    <span key={entry.name}>
+                      <i style={{ background: entry.color }} />
+                      {entry.name}: {entry.value}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="section-card business-animated">
+            <div className="panel-title-row">
+              <div>
+                <h3 className="panel-title">Horario del negocio</h3>
+                <p className="business-panel-copy">{currentBusiness?.name ?? "Tu negocio"}</p>
+              </div>
+            </div>
+            <form onSubmit={handleBusinessScheduleSubmit} className="business-schedule-form">
+              <label>
+                Apertura
+                <input
+                  className="input"
+                  type="time"
+                  value={businessScheduleForm.openingTime}
+                  onChange={(e) => setBusinessScheduleForm((prev) => ({ ...prev, openingTime: e.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Cierre
+                <input
+                  className="input"
+                  type="time"
+                  value={businessScheduleForm.closingTime}
+                  onChange={(e) => setBusinessScheduleForm((prev) => ({ ...prev, closingTime: e.target.value }))}
+                  required
+                />
+              </label>
+              <button className="primary-btn" type="submit" disabled={savingSchedule || !currentBusiness}>
+                {savingSchedule ? "Guardando..." : "Guardar horario"}
+              </button>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {isBusiness ? (
+        <section className="section-card business-animated">
+          <div className="panel-title-row">
+            <div>
+              <h3 className="panel-title">Calendario y disponibilidad</h3>
+              <p className="business-panel-copy">Selecciona un dia para ver sus reservas.</p>
+            </div>
+            <div className="business-calendar-actions">
+              <button type="button" className="business-month-btn" onClick={() => changeBusinessMonth(-1)} title="Mes anterior">
+                ‹
+              </button>
+              <input
+                className="input business-date-input"
+                type="date"
+                value={businessSelectedDate}
+                onChange={(e) => selectBusinessCalendarDate(e.target.value)}
+              />
+              <button type="button" className="business-month-btn" onClick={() => changeBusinessMonth(1)} title="Mes siguiente">
+                ›
+              </button>
+            </div>
+          </div>
+          <div className="business-calendar-layout">
+            <div className="business-month-grid">
+              {["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"].map((day) => (
+                <div key={day} className="business-weekday">{day}</div>
+              ))}
+              {businessMonthDays.map((date, index) => {
+                if (!date) {
+                  return <div key={`empty-${index}`} className="business-day business-day--empty" />;
+                }
+
+                const dayBookings = visibleBookings.filter((booking) => booking.date.startsWith(date));
+                const isSelected = date === businessSelectedDate;
+                const hasBookings = dayBookings.length > 0;
+                const allSlotsBooked = currentBusiness ? dayBookings.length >= buildHourlySlots(currentBusiness).length : false;
+
+                return (
+                  <button
+                    key={date}
+                    type="button"
+                    className={`business-day ${isSelected ? "business-day--active" : ""} ${hasBookings ? "business-day--busy" : ""}`}
+                    onClick={() => selectBusinessCalendarDate(date)}
+                  >
+                    <span>{formatWeekday(date)}</span>
+                    <strong>{date.slice(-2)}</strong>
+                    <small>{allSlotsBooked ? "Ocupado" : hasBookings ? `${dayBookings.length} reservas` : "Libre"}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="business-month-switcher">
+              <span>Mes seleccionado</span>
+              <strong>{formatMonthLabel(businessSelectedDate)}</strong>
+              <div className="business-month-controls">
+                <button type="button" className="business-month-btn" onClick={() => changeBusinessMonth(-1)} title="Mes anterior">
+                  {"<"}
+                </button>
+                <button type="button" className="business-month-btn" onClick={() => changeBusinessMonth(1)} title="Mes siguiente">
+                  {">"}
+                </button>
+              </div>
+              <input
+                className="input business-date-input"
+                type="date"
+                value={businessSelectedDate}
+                onChange={(e) => selectBusinessCalendarDate(e.target.value)}
+              />
+            </div>
+            <div className="business-slots-panel">
+              <h4>{formatShortDay(businessSelectedDate)}</h4>
+              <div className="business-day-summary">
+                <span>{businessSelectedDateBookings.length} reservas</span>
+                <span>{businessSlots.filter((slot) => !slot.isBooked).length} horas libres</span>
+                <span>{currentBusiness?.openingTime} - {currentBusiness?.closingTime}</span>
+              </div>
+              <div className="business-slot-grid">
+                {businessSlots.map((slot) => (
+                  <button
+                    key={slot.value}
+                    type="button"
+                    className={`business-slot ${slot.isBooked ? "business-slot--booked" : ""} ${createForm.time === slot.value ? "business-slot--active" : ""}`}
+                    disabled={slot.isBooked}
+                    onClick={() => {
+                      setCreateForm((prev) => ({
+                        ...prev,
+                        date: businessSelectedDate,
+                        time: slot.value,
+                        businessId: user?.businessId ?? prev.businessId,
+                      }));
+                      setIsCreateOpen(true);
+                    }}
+                  >
+                    <strong>{slot.value}</strong>
+                    <span>{slot.isBooked ? getCustomerName(slot.booking as Booking) : "Libre"}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="business-day-bookings">
+                <h5>Reservas del dia</h5>
+                {businessSelectedDateBookings.length > 0 ? (
+                  businessSelectedDateBookings
+                    .slice()
+                    .sort((a, b) => a.time.localeCompare(b.time))
+                    .map((booking) => (
+                      <div key={booking.id} className="business-day-booking">
+                        <div>
+                          <strong>{booking.time.slice(0, 5)} · {booking.serviceName}</strong>
+                          <span>{getCustomerName(booking)} · {getPaymentMethodLabel(booking)}</span>
+                        </div>
+                        <StatusBadge status={booking.status} />
+                      </div>
+                    ))
+                ) : (
+                  <p>No hay reservas registradas para este dia.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {isCreateOpen ? (
         <section className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Nueva reserva</h3>
@@ -1534,7 +2032,7 @@ export default function BookingsClient({
         </section>
       ) : null}
 
-      {!isClient && !isBusiness && deleteTargetId !== null && (
+      {!isClient && deleteTargetId !== null && (
         <ModalPortal>
           <div
             className="modal-backdrop"
@@ -1586,12 +2084,19 @@ export default function BookingsClient({
 
       <section className="section-card">
         <div className="panel-title-row">
-          <h3 className="panel-title">Reservas registradas</h3>
+          <div>
+            <h3 className="panel-title">Reservas registradas</h3>
+            {isBusiness ? (
+              <p className="business-panel-copy">{formatShortDay(businessSelectedDate)}</p>
+            ) : null}
+          </div>
           <div className="filter-row">
-            <button type="button" className={`filter-pill ${statusFilter === "all" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("all")}>Todas</button>
+            <button type="button" className={`filter-pill ${statusFilter === "all" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("all")}>{isBusiness ? "Dia seleccionado" : "Todas"}</button>
             <button type="button" className={`filter-pill ${statusFilter === "pendiente" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("pendiente")}>Pendientes</button>
             <button type="button" className={`filter-pill ${statusFilter === "confirmado" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("confirmado")}>Confirmadas</button>
-            <button type="button" className={`filter-pill ${statusFilter === "completado" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("completado")}>Completadas</button>
+            {!isBusiness ? (
+              <button type="button" className={`filter-pill ${statusFilter === "completado" ? "filter-pill--active" : ""}`} onClick={() => setStatusFilter("completado")}>Completadas</button>
+            ) : null}
           </div>
         </div>
 
@@ -1612,7 +2117,7 @@ export default function BookingsClient({
             </tr>
           </thead>
           <tbody>
-            {filteredBookings.length > 0 ? filteredBookings.map((booking) => (
+            {businessDisplayBookings.length > 0 ? businessDisplayBookings.map((booking) => (
               <tr key={booking.id}>
                 <td style={{ fontWeight: 700, color: "var(--muted)" }}>#{booking.id}</td>
                 <td>{formatDate(booking.date)}</td>
@@ -1652,6 +2157,15 @@ export default function BookingsClient({
                         >
                           Confirmar pago
                         </button>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.18)", color: "#FF3B30" }}
+                          disabled={businessActionId === booking.id}
+                          onClick={() => openDeleteModal(booking.id)}
+                        >
+                          Eliminar
+                        </button>
                       </>
                     ) : (
                       <>
@@ -1670,7 +2184,7 @@ export default function BookingsClient({
               <tr>
                 <td colSpan={isClient ? 6 : 8} style={{ textAlign: "center", padding: "48px", color: "var(--muted)" }}>
                   <div style={{ fontSize: "28px", marginBottom: 8, opacity: 0.4 }}>∅</div>
-                  No hay reservas para este filtro.
+                  {isBusiness ? "No hay reservas para el dia seleccionado." : "No hay reservas para este filtro."}
                 </td>
               </tr>
             )}
@@ -1679,10 +2193,15 @@ export default function BookingsClient({
       </section>
 
       <style jsx>{`
+        .business-page-hero {
+          overflow: visible;
+          z-index: 40;
+        }
+
         .business-session-card {
           min-width: 300px;
           display: grid;
-          grid-template-columns: 48px minmax(0, 1fr) 44px;
+          grid-template-columns: 48px minmax(0, 1fr) 44px 44px;
           align-items: center;
           gap: 12px;
           padding: 16px;
@@ -1753,9 +2272,406 @@ export default function BookingsClient({
           border-color: rgba(212, 255, 0, 0.22);
         }
 
+        .business-logout-btn:hover {
+          background: #FF3B30;
+          color: white;
+          border-color: #FF3B30;
+          box-shadow: 0 10px 24px rgba(255, 59, 48, 0.28);
+        }
+
+        .business-new-btn {
+          grid-column: 1 / -1;
+          width: 100%;
+          justify-content: center;
+          padding: 12px 18px;
+        }
+
+        .business-dashboard-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.8fr);
+          gap: 24px;
+        }
+
+        .business-panel-copy {
+          margin: 6px 0 0;
+          color: var(--muted);
+          font-size: 14px;
+          font-weight: 700;
+        }
+
+        .business-charts {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+          gap: 20px;
+        }
+
+        .business-chart {
+          min-height: 280px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          padding: 20px;
+          background: var(--bg);
+        }
+
+        .business-chart--compact {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .business-chart-legend {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          width: 100%;
+          margin-top: 8px;
+        }
+
+        .business-chart-legend span {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--muted);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .business-chart-legend i {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+        }
+
+        .business-schedule-form {
+          display: grid;
+          gap: 16px;
+        }
+
+        .business-schedule-form label {
+          display: grid;
+          gap: 8px;
+          color: var(--muted);
+          font-size: 13px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .business-date-input {
+          max-width: 220px;
+        }
+
+        .business-calendar-actions {
+          display: none;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .business-month-switcher {
+          align-self: stretch;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          min-width: 150px;
+          padding: 18px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          background: var(--bg);
+          text-align: center;
+        }
+
+        .business-month-switcher span {
+          color: var(--muted);
+          font-size: 11px;
+          font-weight: 900;
+          text-transform: uppercase;
+        }
+
+        .business-month-switcher strong {
+          max-width: 130px;
+          font-size: 18px;
+          font-weight: 900;
+          text-transform: capitalize;
+        }
+
+        .business-month-controls {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+
+        .business-month-btn {
+          width: 44px;
+          height: 44px;
+          display: grid;
+          place-items: center;
+          border: 1.5px solid var(--border);
+          border-radius: 14px;
+          background: var(--surface);
+          color: var(--text);
+          font-size: 28px;
+          line-height: 1;
+          font-weight: 900;
+          cursor: pointer;
+          transition: all 0.2s var(--ease-out-expo);
+        }
+
+        .business-notification-btn {
+          width: 44px;
+          height: 44px;
+          position: relative;
+          z-index: 5;
+        }
+
+        .business-notification-btn :global(.notification-dropdown) {
+          right: 0 !important;
+          z-index: 5000 !important;
+        }
+
+        .business-notification-btn :global(.theme-toggle-btn) {
+          width: 44px !important;
+          height: 44px !important;
+          border-radius: 14px !important;
+          border-color: rgba(212, 255, 0, 0.22) !important;
+          background: rgba(212, 255, 0, 0.08) !important;
+          color: var(--primary) !important;
+        }
+
+        .business-month-btn:hover {
+          border-color: var(--primary);
+          background: var(--primary);
+          color: #111111;
+          transform: translateY(-2px);
+        }
+
+        .business-calendar-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) auto minmax(280px, 0.8fr);
+          gap: 24px;
+        }
+
+        .business-month-grid {
+          display: grid;
+          grid-template-columns: repeat(7, minmax(72px, 1fr));
+          gap: 10px;
+        }
+
+        .business-weekday {
+          padding: 0 10px 6px;
+          color: var(--muted);
+          font-size: 12px;
+          font-weight: 900;
+          text-transform: uppercase;
+          text-align: center;
+        }
+
+        .business-day,
+        .business-slot {
+          border: 1.5px solid var(--border);
+          background: var(--surface);
+          color: var(--text);
+          border-radius: 16px;
+          cursor: pointer;
+          transition: all 0.2s var(--ease-out-expo);
+        }
+
+        .business-day {
+          min-height: 92px;
+          padding: 12px;
+          display: grid;
+          justify-items: start;
+          align-content: space-between;
+          text-align: left;
+        }
+
+        .business-day--empty {
+          background: transparent;
+          border-color: transparent;
+          pointer-events: none;
+        }
+
+        .business-day span,
+        .business-day small,
+        .business-slot span {
+          color: var(--muted);
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .business-day strong {
+          font-size: 24px;
+          line-height: 1;
+        }
+
+        .business-day:hover,
+        .business-slot:hover:not(:disabled) {
+          border-color: var(--primary);
+          transform: translateY(-2px);
+        }
+
+        .business-day--busy {
+          background: linear-gradient(180deg, rgba(245, 158, 11, 0.1), transparent), var(--surface);
+        }
+
+        .business-day--active,
+        .business-slot--active {
+          border-color: var(--primary);
+          background: var(--primary);
+          color: #111111;
+          box-shadow: 0 10px 24px rgba(212, 255, 0, 0.2);
+        }
+
+        .business-day--active span,
+        .business-day--active small,
+        .business-slot--active span {
+          color: #111111;
+        }
+
+        .business-slots-panel {
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          background: var(--bg);
+          padding: 20px;
+        }
+
+        .business-slots-panel h4 {
+          margin: 0 0 16px;
+          font-size: 22px;
+        }
+
+        .business-slot-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+
+        .business-day-summary {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        .business-day-summary span {
+          padding: 10px;
+          border-radius: 12px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          color: var(--muted);
+          font-size: 12px;
+          font-weight: 800;
+          text-align: center;
+        }
+
+        .business-slot {
+          min-height: 72px;
+          padding: 12px;
+          display: grid;
+          justify-items: start;
+          align-content: center;
+          gap: 4px;
+        }
+
+        .business-slot:disabled {
+          cursor: not-allowed;
+        }
+
+        .business-slot--booked {
+          background: rgba(239, 68, 68, 0.08);
+          border-color: rgba(239, 68, 68, 0.22);
+        }
+
+        .business-day-bookings {
+          margin-top: 20px;
+          display: grid;
+          gap: 10px;
+        }
+
+        .business-day-bookings h5 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 900;
+        }
+
+        .business-day-bookings p {
+          margin: 0;
+          color: var(--muted);
+          font-weight: 700;
+        }
+
+        .business-day-booking {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px;
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          background: var(--surface);
+        }
+
+        .business-day-booking strong,
+        .business-day-booking span {
+          display: block;
+        }
+
+        .business-day-booking strong {
+          font-size: 14px;
+        }
+
+        .business-day-booking span {
+          margin-top: 3px;
+          color: var(--muted);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
         @media (max-width: 760px) {
           .business-session-card {
             min-width: 0;
+          }
+
+          .business-dashboard-grid,
+          .business-charts,
+          .business-calendar-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .business-month-grid {
+            grid-template-columns: repeat(7, minmax(58px, 1fr));
+            overflow-x: auto;
+          }
+
+          .business-date-input {
+            max-width: none;
+          }
+
+          .business-calendar-actions {
+            justify-content: stretch;
+          }
+
+          .business-calendar-actions .business-date-input {
+            flex: 1;
+          }
+
+          .business-day {
+            min-height: 82px;
+            padding: 10px;
+          }
+
+          .business-day-summary,
+          .business-slot-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .business-day-booking {
+            align-items: flex-start;
+            flex-direction: column;
           }
         }
       `}</style>
