@@ -75,12 +75,12 @@ export default function RegisterCustomerPage() {
               display: "inline-grid",
               placeItems: "center",
               width: "150px",
-              height: "82px",
+              height: "90px",
               background: "#111111",
               borderRadius: "16px",
               border: "2px solid var(--primary)",
               marginBottom: "24px",
-              padding: "10px",
+              padding: "0px",
             }}
           >
             <Image
@@ -177,7 +177,7 @@ export default function RegisterCustomerPage() {
           </button>
           <button
             type="button"
-            className="secondary-btn"
+            className="Nuevo-btn"
             onClick={() => router.push("/login")}
           >
             Volver a inicio de sesión

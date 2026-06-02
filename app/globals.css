@@ -32,7 +32,7 @@
   --sidebar-link-hover: #F1F1F1;
   --sidebar-link-active-bg: #D4FF00;
   --sidebar-link-active-text: #111111;
-  --sidebar-brand-bg: rgba(191, 255, 0, 0.867);
+  --sidebar-brand-bg: rgba(9, 9, 8, 0.918);
   --sidebar-brand-border: rgba(95, 118, 0, 0.45);
 
   /* Animaciones */
@@ -245,11 +245,13 @@ h6 {
   margin-left: var(--sidebar-width-collapsed);
 }
 
-.admin-shell--client .admin-sidebar {
+.admin-shell--client .admin-sidebar,
+.admin-shell--business .admin-sidebar {
   display: none;
 }
 
-.admin-shell--client .admin-main {
+.admin-shell--client .admin-main,
+.admin-shell--business .admin-main {
   margin-left: 0;
 }
 
@@ -279,7 +281,8 @@ h6 {
   left: calc(var(--sidebar-width-collapsed) + 24px);
 }
 
-.admin-shell--client .admin-header {
+.admin-shell--client .admin-header,
+.admin-shell--business .admin-header {
   left: 24px;
 }
 
@@ -297,7 +300,8 @@ h6 {
   left: var(--sidebar-width-collapsed);
 }
 
-.admin-shell--client .admin-header:hover {
+.admin-shell--client .admin-header:hover,
+.admin-shell--business .admin-header:hover {
   left: 0;
 }
 
@@ -423,8 +427,19 @@ h6 {
 
 .secondary-btn {
   border: 1.5px solid var(--border);
-  background: transparent;
-  color: var(--text);
+  background-color:rgb(244, 236, 236) ;
+  color: rgb(21, 21, 21);
+  border-radius: 100px;
+  padding: 14px 28px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.Nuevo-btn {
+  border: 1.5px solid var(--border);
+  background-color:rgb(244, 236, 236) ;
+  color: rgb(21, 21, 21);
   border-radius: 100px;
   padding: 14px 28px;
   font-weight: 700;

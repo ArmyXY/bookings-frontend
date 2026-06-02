@@ -73,12 +73,12 @@ export default function LoginPage() {
               display: "inline-grid",
               placeItems: "center",
               width: "150px",
-              height: "82px",
+              height: "90px",
               background: "#111111",
               borderRadius: "16px",
               border: "2px solid var(--primary)",
               marginBottom: "24px",
-              padding: "10px",
+              padding: "0px",
             }}
           >
             <Image
@@ -166,7 +166,7 @@ export default function LoginPage() {
           <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
             Admin: admin@demo.com / admin123
             <br />
-            Negocio: manager1@demo.com / manager123
+            Negocio: manager1@example.com / manager123
             <br />
             Cliente: juan.perez@example.com / password123
           </p>

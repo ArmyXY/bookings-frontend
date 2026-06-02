@@ -66,7 +66,7 @@ export default function AdminLayout({
     <div className={`admin-shell admin-shell--${user?.role ?? "guest"} ${isCollapsed ? "admin-shell--collapsed" : ""}`}>
       <PostLoginShutter />
       <RouteLoadingOverlay />
-      {user?.role !== "client" ? (
+      {user?.role === "admin" ? (
         <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
       ) : null}
 

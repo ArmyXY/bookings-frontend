@@ -31,7 +31,7 @@ export default function PostLoginShutter() {
   return (
     <div className="post-login-shutter" aria-label="Cargando panel">
       <div className="post-login-shutter__sign">
-        <span>BookFlow</span>
+        <span>AliZar</span>
       </div>
       <div className="post-login-shutter__door">
         <div className="post-login-shutter__handle" />

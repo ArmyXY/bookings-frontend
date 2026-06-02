@@ -217,6 +217,7 @@ export default function BookingsClient({
   const knownBusinessBookingIdsRef = useRef<Set<number>>(new Set());
   const knownCustomerIdsRef = useRef<Set<number>>(new Set());
   const createFormSectionRef = useRef<HTMLElement>(null);
+  const shouldScrollClientBookingPanelRef = useRef(false);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isClient = user?.role === "client";
@@ -314,9 +315,12 @@ export default function BookingsClient({
   useEffect(() => {
     if (!isClient || !isCreateOpen || !clientBookingPanelRef.current) return;
 
-    const timeout = setTimeout(() => {
-      clientBookingPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
+    const timeout = shouldScrollClientBookingPanelRef.current
+      ? setTimeout(() => {
+          shouldScrollClientBookingPanelRef.current = false;
+          clientBookingPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 150)
+      : null;
 
     const ctx = gsap.context(() => {
       gsap.fromTo(
@@ -327,7 +331,7 @@ export default function BookingsClient({
     });
 
     return () => {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       ctx.revert();
     };
   }, [isClient, isCreateOpen, selectedBusinessId]);
@@ -602,6 +606,9 @@ export default function BookingsClient({
     setEditingBookingId(null);
     setDeleteTargetId(null);
     resetEditForm();
+    if (isClient) {
+      shouldScrollClientBookingPanelRef.current = true;
+    }
     setCreateForm((prev) => ({
       ...prev,
       date: prev.date || getTodayValue(),
@@ -610,6 +617,14 @@ export default function BookingsClient({
       status: isBusiness ? "confirmado" : prev.status,
     }));
     setIsCreateOpen(true);
+    if (isClient) {
+      setTimeout(() => {
+        if (shouldScrollClientBookingPanelRef.current && clientBookingPanelRef.current) {
+          shouldScrollClientBookingPanelRef.current = false;
+          clientBookingPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 150);
+    }
   }
 
   function closeCreateForm() {
@@ -619,6 +634,7 @@ export default function BookingsClient({
   }
 
   function selectBusiness(business: Business) {
+    shouldScrollClientBookingPanelRef.current = false;
     setSelectedBusinessId(business.id);
     setSuccessMessage("");
     setErrorMessage("");
@@ -2627,11 +2643,21 @@ export default function BookingsClient({
         }
 
         .business-day span,
-        .business-day small,
         .business-slot span {
           color: var(--muted);
           font-size: 11px;
           font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .business-day small {
+          display: block;
+          max-width: 100%;
+          color: var(--muted);
+          font-size: 10px;
+          font-weight: 800;
+          line-height: 1.1;
+          overflow-wrap: anywhere;
           text-transform: uppercase;
         }
 
