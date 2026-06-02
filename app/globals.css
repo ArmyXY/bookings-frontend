@@ -438,10 +438,10 @@ h6 {
 }
 .Nuevo-btn {
   border: 1.5px solid var(--border);
-  background-color:rgb(244, 236, 236) ;
+  background-color:rgb(248, 244, 244) ;
   color: rgb(21, 21, 21);
   border-radius: 100px;
-  padding: 14px 28px;
+  padding: 15px 51px;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;

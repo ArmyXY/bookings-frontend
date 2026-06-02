@@ -1023,7 +1023,7 @@ export default function BookingsClient({
               Nueva reserva
             </button>
             <button
-              className="secondary-btn"
+              className="Nuevo-btn"
               type="button"
               onClick={() => clientReservationsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
             >
