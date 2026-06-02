@@ -14,15 +14,18 @@ export function useGsapButtons() {
       if (attachedNodes.has(node)) return;
       
       const onMouseEnter = () => {
+        if (node instanceof HTMLButtonElement && node.disabled) return;
         gsap.to(node, { scale: 1.05, duration: 0.2, ease: "power2.out" });
       };
       const onMouseLeave = () => {
         gsap.to(node, { scale: 1, duration: 0.2, ease: "power2.out" });
       };
       const onMouseDown = () => {
+        if (node instanceof HTMLButtonElement && node.disabled) return;
         gsap.to(node, { scale: 0.95, duration: 0.1, ease: "power2.inOut" });
       };
       const onMouseUp = () => {
+        if (node instanceof HTMLButtonElement && node.disabled) return;
         gsap.to(node, { scale: 1.05, duration: 0.1, ease: "power2.inOut" });
       };
 
@@ -36,7 +39,7 @@ export function useGsapButtons() {
 
     const attachToExisting = () => {
       const buttons = document.querySelectorAll(
-        ".primary-btn, .secondary-btn, .danger-btn, .filter-pill, .admin-sidebar__brand-inner, .theme-toggle-btn, .client-theme-btn, .client-business-tile, .client-slot"
+        "button, a.primary-btn, a.secondary-btn, .danger-btn, .filter-pill, .admin-sidebar__brand-inner, .client-business-tile, .client-slot, .business-month-btn, [role='button']"
       );
       buttons.forEach(attachAnimations);
     };

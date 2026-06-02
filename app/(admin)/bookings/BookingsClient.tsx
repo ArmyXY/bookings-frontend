@@ -209,8 +209,10 @@ export default function BookingsClient({
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
   const [businessRatings, setBusinessRatings] = useState<Record<number, number>>({});
+  const [businessSearch, setBusinessSearch] = useState("");
   const clientPageRef = useRef<HTMLDivElement>(null);
   const clientBookingPanelRef = useRef<HTMLElement>(null);
+  const clientReservationsRef = useRef<HTMLElement>(null);
   const businessPageRef = useRef<HTMLDivElement>(null);
   const knownBusinessBookingIdsRef = useRef<Set<number>>(new Set());
   const knownCustomerIdsRef = useRef<Set<number>>(new Set());
@@ -312,6 +314,10 @@ export default function BookingsClient({
   useEffect(() => {
     if (!isClient || !isCreateOpen || !clientBookingPanelRef.current) return;
 
+    const timeout = setTimeout(() => {
+      clientBookingPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+
     const ctx = gsap.context(() => {
       gsap.fromTo(
         clientBookingPanelRef.current,
@@ -320,7 +326,10 @@ export default function BookingsClient({
       );
     });
 
-    return () => ctx.revert();
+    return () => {
+      clearTimeout(timeout);
+      ctx.revert();
+    };
   }, [isClient, isCreateOpen, selectedBusinessId]);
 
   useEffect(() => {
@@ -463,6 +472,15 @@ export default function BookingsClient({
     () => businesses.find((business) => business.id === selectedBusinessId) ?? null,
     [businesses, selectedBusinessId]
   );
+
+  const filteredBusinessesForClient = useMemo(() => {
+    const term = businessSearch.trim().toLowerCase();
+    if (!term) return businesses;
+
+    return businesses.filter((business) =>
+      business.name.toLowerCase().includes(term)
+    );
+  }, [businessSearch, businesses]);
 
   const selectedDayBookings = useMemo(() => {
     if (!selectedBusiness || !createForm.date) return [];
@@ -984,9 +1002,18 @@ export default function BookingsClient({
             <p>Elige un negocio, selecciona fecha y hora, y consulta tus reservas desde esta misma pantalla.</p>
           </div>
 
-          <button className="primary-btn" type="button" onClick={openCreateForm} disabled={!currentCustomer}>
-            Nueva reserva
-          </button>
+          <div className="client-hero-actions">
+            <button className="primary-btn" type="button" onClick={openCreateForm} disabled={!currentCustomer}>
+              Nueva reserva
+            </button>
+            <button
+              className="secondary-btn"
+              type="button"
+              onClick={() => clientReservationsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              Mis reservas
+            </button>
+          </div>
           <div className="client-session-card" style={{ display: "none" }} aria-hidden="true">
             <div className="client-avatar">{user?.name?.slice(0, 1).toUpperCase() ?? "C"}</div>
             <div>
@@ -1033,12 +1060,24 @@ export default function BookingsClient({
               Negocios disponibles
             </h3>
             <span style={{ color: "var(--muted)", fontWeight: 800 }}>
-              {businesses.length} disponibles
+              {filteredBusinessesForClient.length} disponibles
             </span>
           </div>
 
+          <form
+            className="client-business-search"
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <input
+              className="input"
+              value={businessSearch}
+              onChange={(e) => setBusinessSearch(e.target.value)}
+              placeholder="Buscar negocio por nombre..."
+            />
+          </form>
+
           <div className="client-business-grid">
-            {businesses.map((business, index) => (
+            {filteredBusinessesForClient.length > 0 ? filteredBusinessesForClient.map((business, index) => (
               <article
                 key={business.id}
                 role="button"
@@ -1080,7 +1119,11 @@ export default function BookingsClient({
                   {business.openingTime} - {business.closingTime}
                 </span>
               </article>
-            ))}
+            )) : (
+              <div className="empty-table-cell" style={{ gridColumn: "1 / -1" }}>
+                No hay negocios con ese nombre.
+              </div>
+            )}
           </div>
         </section>
 
@@ -1175,7 +1218,7 @@ export default function BookingsClient({
           </section>
         ) : null}
 
-        <section className="section-card client-animated">
+        <section ref={clientReservationsRef} className="section-card client-animated">
           <div className="panel-title-row">
             <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '8px', color: 'var(--primary)' }}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/><path d="M12 5v14"/></svg>
@@ -1392,6 +1435,37 @@ export default function BookingsClient({
             letter-spacing: 0.08em;
           }
 
+          .client-hero-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            min-width: 190px;
+          }
+
+          .client-hero-actions .primary-btn,
+          .client-hero-actions .secondary-btn {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .client-hero-actions .secondary-btn {
+            color: #ffffff;
+          }
+
+          [data-theme="dark"] .client-hero-actions .secondary-btn {
+            background: #ffffff;
+            border-color: #ffffff;
+            color: #111111;
+          }
+
+          [data-theme="dark"] .client-hero-actions .secondary-btn:hover {
+            background: #f1f1f1;
+            border-color: #f1f1f1;
+            color: #111111;
+          }
+
           .client-session-card {
             min-width: 300px;
             display: grid;
@@ -1465,6 +1539,11 @@ export default function BookingsClient({
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 20px;
+          }
+
+          .client-business-search {
+            max-width: 520px;
+            margin: 0 0 24px;
           }
 
           .client-business-tile {
@@ -1708,6 +1787,10 @@ export default function BookingsClient({
 
             .client-hero-soft h2 {
               font-size: 34px;
+            }
+
+            .client-hero-actions {
+              width: 100%;
             }
 
             .client-session-card {

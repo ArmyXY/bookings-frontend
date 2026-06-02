@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import NotificationDropdown from "./NotificationDropdown";
@@ -10,12 +11,24 @@ export default function Header() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const isBusiness = user?.role === "business";
+  const showRoleIcon = user?.role === "client" || isBusiness;
+  const title = isAdmin ? "Centro de Operaciones" : isBusiness ? "Area de negocio" : "Area de usuario";
 
   return (
     <header className="admin-header">
       <div>
-        <h1 className="admin-header__title" style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
-          {isAdmin ? "Centro de Operaciones" : isBusiness ? "Area de negocio" : "Area de usuario"}
+        <h1 className="admin-header__title" style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "16px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
+          {showRoleIcon ? (
+            <Image
+              src="/favicon.ico"
+              alt=""
+              width={20}
+              height={20}
+              aria-hidden="true"
+              style={{ width: "20px", height: "20px", objectFit: "contain", flex: "0 0 auto" }}
+            />
+          ) : null}
+          {title}
         </h1>
         <p className="admin-header__subtitle" style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginTop: "2px" }}>
           {isAdmin ? "Panel de Control Administrativo" : isBusiness ? "Reservas y actividad reciente" : "Reservas y comercios disponibles"}

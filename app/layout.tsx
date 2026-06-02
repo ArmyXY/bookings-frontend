@@ -5,7 +5,7 @@ import { NotificationProvider } from "@/components/providers/NotificationProvide
 import { AuthProvider } from "@/components/providers/AuthProvider";
 
 export const metadata: Metadata = {
-  title: "Panel de reservas",
+  title: "AliZar",
   description: "Base inicial del proyecto de gestion de reservas",
 };
 

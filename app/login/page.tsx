@@ -39,7 +39,7 @@ export default function LoginPage() {
       markPostLoginShutter();
       router.replace(getHomePath(response.user));
     } catch {
-      setErrorMessage("Credenciales invalidas o backend no disponible.");
+      setErrorMessage("Correo o contraseña incorrectos.");
     } finally {
       setLoading(false);
     }

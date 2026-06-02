@@ -47,7 +47,7 @@ const appointmentStatusLabels: Record<AppointmentStatus, string> = {
 const appointmentStatusColors: Record<AppointmentStatus, string> = {
   pendiente: "#F59E0B",
   confirmado: "#10B981",
-  completado: "#3B82F6",
+  completado: "#7C3AED",
   cancelado: "#EF4444",
 };
 
@@ -67,15 +67,16 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
 
 function Badge({ status }: { status: AppointmentStatus | PaymentStatus }) {
   const labels = { ...appointmentStatusLabels, ...paymentStatusLabels };
-  const isPositive = status === "confirmado" || status === "completado" || status === "pagado";
+  const isCompleted = status === "completado";
+  const isPositive = status === "confirmado" || status === "pagado";
   const isNegative = status === "cancelado" || status === "devolucion" || status === "devolución" || status === "devoluciÃ³n";
   
-  const badgeClass = isPositive ? "confirmed" : isNegative ? "paid" : "pending";
+  const badgeClass = isCompleted ? "completed" : isPositive ? "confirmed" : isNegative ? "paid" : "pending";
 
   return (
     <span className={`badge badge--${badgeClass}`} style={{ 
       letterSpacing: "0.02em",
-      boxShadow: isPositive ? "0 2px 8px rgba(16, 185, 129, 0.15)" : "none"
+      boxShadow: isCompleted ? "0 2px 8px rgba(124, 58, 237, 0.16)" : isPositive ? "0 2px 8px rgba(16, 185, 129, 0.15)" : "none"
     }}>
       {labels[status]}
     </span>

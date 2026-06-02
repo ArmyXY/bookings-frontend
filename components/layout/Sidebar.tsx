@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
+import alizarLogo from "@/app/Alizar.png";
 
 const menuItems = [
   {
@@ -86,8 +88,8 @@ export default function Sidebar({
         <div
           className="admin-sidebar__brand-inner"
           style={{
-            background: "rgba(212, 255, 0, 0.08)",
-            border: "1.5px solid rgba(212, 255, 0, 0.2)",
+            background: "var(--sidebar-brand-bg)",
+            border: "1.5px solid var(--sidebar-brand-border)",
             borderRadius: "var(--radius-md)",
             padding: isCollapsed ? "16px 8px" : "20px",
             textAlign: "center",
@@ -99,11 +101,36 @@ export default function Sidebar({
         >
           <h2 className="admin-sidebar__title" style={{
             margin: 0,
-            fontSize: isCollapsed ? "18px" : "22px",
-            color: "var(--text)",
+            display: "grid",
+            placeItems: "center",
+            lineHeight: 0,
             opacity: 1
           }}>
-            {isCollapsed ? "BF" : "BookFlow"}
+            {isCollapsed ? (
+              <Image
+                src="/favicon.ico"
+                alt="AliZar"
+                width={32}
+                height={32}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  objectFit: "contain"
+                }}
+              />
+            ) : (
+              <Image
+                src={alizarLogo}
+                alt="AliZar"
+                priority
+                style={{
+                  width: "100%",
+                  maxWidth: "150px",
+                  height: "auto",
+                  objectFit: "contain"
+                }}
+              />
+            )}
           </h2>
           {!isCollapsed && (
             <p className="admin-sidebar__subtitle" style={{
@@ -114,7 +141,6 @@ export default function Sidebar({
               letterSpacing: "0.05em",
               color: "var(--text)"
             }}>
-              FINANCE AGENCY
             </p>
           )}
         </div>
