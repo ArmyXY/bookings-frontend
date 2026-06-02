@@ -213,6 +213,8 @@ export default function BookingsClient({
   const clientBookingPanelRef = useRef<HTMLElement>(null);
   const businessPageRef = useRef<HTMLDivElement>(null);
   const knownBusinessBookingIdsRef = useRef<Set<number>>(new Set());
+  const knownCustomerIdsRef = useRef<Set<number>>(new Set());
+  const createFormSectionRef = useRef<HTMLElement>(null);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isClient = user?.role === "client";
@@ -256,6 +258,7 @@ export default function BookingsClient({
 
         setBookings(loadedBookings);
         setCustomers(customersData);
+        knownCustomerIdsRef.current = new Set(customersData.map((c) => c.id));
         setBusinesses(businessesData);
         setSelectedBusinessId(defaultBusinessId || null);
         if (userBusiness) {
@@ -342,6 +345,14 @@ export default function BookingsClient({
   }, [isBusiness, businesses.length]);
 
   useEffect(() => {
+    if (isClient || !isCreateOpen || !createFormSectionRef.current) return;
+    const timeout = setTimeout(() => {
+      createFormSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [isClient, isCreateOpen]);
+
+  useEffect(() => {
     if (!isBusiness || !user?.businessId) return;
 
     const interval = setInterval(async () => {
@@ -375,6 +386,36 @@ export default function BookingsClient({
 
     return () => clearInterval(interval);
   }, [addNotification, isBusiness, user?.businessId]);
+
+  useEffect(() => {
+    if (isClient) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latestCustomers = await getCustomers();
+        const knownIds = knownCustomerIdsRef.current;
+        const newCustomers = latestCustomers.filter((c) => !knownIds.has(c.id));
+
+        if (knownIds.size > 0 && newCustomers.length > 0) {
+          addNotification({
+            title: newCustomers.length === 1 ? "Nuevo cliente registrado" : "Nuevos clientes",
+            description:
+              newCustomers.length === 1
+                ? `${newCustomers[0].name} se ha registrado en el sistema.`
+                : `Se han registrado ${newCustomers.length} nuevos clientes.`,
+            type: "info",
+          });
+        }
+
+        knownCustomerIdsRef.current = new Set(latestCustomers.map((c) => c.id));
+        setCustomers(latestCustomers);
+      } catch {
+        // silently fail
+      }
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [addNotification, isClient]);
 
   const filteredBookings = useMemo(() => {
     if (isClient && !currentCustomer) return [];
@@ -943,7 +984,10 @@ export default function BookingsClient({
             <p>Elige un negocio, selecciona fecha y hora, y consulta tus reservas desde esta misma pantalla.</p>
           </div>
 
-          <div className="client-session-card">
+          <button className="primary-btn" type="button" onClick={openCreateForm} disabled={!currentCustomer}>
+            Nueva reserva
+          </button>
+          <div className="client-session-card" style={{ display: "none" }} aria-hidden="true">
             <div className="client-avatar">{user?.name?.slice(0, 1).toUpperCase() ?? "C"}</div>
             <div>
               <strong>{user?.name ?? "Cliente"}</strong>
@@ -1695,7 +1739,11 @@ export default function BookingsClient({
 
         <div style={{ position: "relative", zIndex: 3 }}>
           {isBusiness ? (
-            <div className="business-session-card">
+            <>
+            <button type="button" className="primary-btn" onClick={openCreateForm}>
+              Nueva reserva
+            </button>
+            <div className="business-session-card" style={{ display: "none" }} aria-hidden="true">
               <div className="business-avatar">{user?.name?.slice(0, 1).toUpperCase() ?? "N"}</div>
               <div>
                 <strong>{user?.name ?? "Negocio"}</strong>
@@ -1735,6 +1783,7 @@ export default function BookingsClient({
                 Nueva reserva
               </button>
             </div>
+            </>
           ) : (
             <button className="primary-btn" type="button" onClick={openCreateForm} disabled={isClient && !currentCustomer}>
               Nueva reserva
@@ -1991,7 +2040,7 @@ export default function BookingsClient({
       ) : null}
 
       {isCreateOpen ? (
-        <section className="section-card">
+        <section ref={createFormSectionRef} className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Nueva reserva</h3>
             <button type="button" className="secondary-btn" onClick={closeCreateForm}>

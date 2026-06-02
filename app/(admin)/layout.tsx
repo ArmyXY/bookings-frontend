@@ -11,7 +11,6 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 const clientAllowedPaths = ["/bookings", "/businesses", "/profile"];
 const businessAllowedPaths = ["/bookings", "/profile"];
-const publicPaths = ["/login", "/customers/nuevo"];
 
 export default function AdminLayout({
   children,
@@ -63,19 +62,8 @@ export default function AdminLayout({
   
 
 
-  if (user?.role === "client" || user?.role === "business") {
-    return (
-      <div className="client-auth-shell">
-        <PostLoginShutter />
-        <RouteLoadingOverlay />
-        <main className="admin-content">{children}</main>
-      </div>
-    );
-  }
-
-
   return (
-    <div className={`admin-shell ${isCollapsed ? "admin-shell--collapsed" : ""}`}>
+    <div className={`admin-shell admin-shell--${user?.role ?? "guest"} ${isCollapsed ? "admin-shell--collapsed" : ""}`}>
       <PostLoginShutter />
       <RouteLoadingOverlay />
       <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
