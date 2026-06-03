@@ -231,27 +231,24 @@ export default function BookingsClient({
       try {
         const [loadedBookings, loadedCustomers, businessesData] = await Promise.all([
           getAppointments(),
-          getCustomers(),
+          isClient ? Promise.resolve([]) : getCustomers(),
           getBusinesses(),
         ]);
         let customersData = loadedCustomers;
-        let defaultCustomerId = customersData[0]?.id ?? 0;
+        let defaultCustomerId = 0;
 
         if (isClient && user) {
-          let clientCustomer = customersData.find(
-            (customer) => customer.email.toLowerCase() === user.email.toLowerCase()
-          );
-
-          if (!clientCustomer) {
-            clientCustomer = await createCustomer({
-              name: user.name,
-              email: user.email,
-            });
-            customersData = [clientCustomer, ...customersData];
-          }
-
+          const clientCustomer: Customer = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: (user as any).phone || null,
+          };
+          customersData = [clientCustomer];
           defaultCustomerId = clientCustomer.id;
           setCurrentCustomer(clientCustomer);
+        } else {
+          defaultCustomerId = customersData[0]?.id ?? 0;
         }
 
         const defaultBusinessId = isBusiness && user.businessId
