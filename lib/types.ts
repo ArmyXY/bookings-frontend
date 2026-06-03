@@ -18,6 +18,7 @@ export type Business = {
   openingTime: string;
   closingTime: string;
   createdAt?: string;
+  services?: string[];
   appointments?: Appointment[];
   payments?: Payment[];
 };
