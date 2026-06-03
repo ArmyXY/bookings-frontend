@@ -71,11 +71,13 @@ const emptyForm: CreateBookingDto = {
 
 function StatusBadge({ status }: { status: BookingStatus }) {
   const badgeStatus =
-    status === "confirmado" || status === "completado"
-      ? "confirmed"
-      : status === "cancelado"
-        ? "paid"
-        : "pending";
+    status === "completado"
+      ? "completed"
+      : status === "confirmado"
+        ? "confirmed"
+        : status === "cancelado"
+          ? "paid"
+          : "pending";
 
   return <span className={`badge badge--${badgeStatus}`}>{statusLabels[status]}</span>;
 }
@@ -631,7 +633,9 @@ export default function BookingsClient({
   }
 
   function selectBusiness(business: Business) {
-    shouldScrollClientBookingPanelRef.current = false;
+    if (isClient) {
+      shouldScrollClientBookingPanelRef.current = true;
+    }
     setSelectedBusinessId(business.id);
     setSuccessMessage("");
     setErrorMessage("");
@@ -643,6 +647,14 @@ export default function BookingsClient({
       date: prev.date || getTodayValue(),
       time: "",
     }));
+    if (isClient) {
+      setTimeout(() => {
+        if (shouldScrollClientBookingPanelRef.current && clientBookingPanelRef.current) {
+          shouldScrollClientBookingPanelRef.current = false;
+          clientBookingPanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 150);
+    }
   }
 
   function openEditForm(booking: Booking) {
@@ -1016,9 +1028,6 @@ export default function BookingsClient({
           </div>
 
           <div className="client-hero-actions">
-            <button className="primary-btn" type="button" onClick={openCreateForm} disabled={!currentCustomer}>
-              Nueva reserva
-            </button>
             <button
               className="Nuevo-btn"
               type="button"

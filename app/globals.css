@@ -664,14 +664,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   color: var(--text);
 }
 
-[data-theme="dark"] .secondary-btn {
+[data-theme="dark"] .secondary-btn,
+[data-theme="dark"] .Nuevo-btn {
+  background-color: var(--surface-2);
   color: #ffffff;
   border-color: var(--border-strong);
 }
 
-[data-theme="dark"] .secondary-btn:hover {
+[data-theme="dark"] .secondary-btn:hover,
+[data-theme="dark"] .Nuevo-btn:hover {
   color: #ffffff;
-  background: var(--surface-2);
+  background: var(--border-strong);
   border-color: #ffffff;
 }
 
