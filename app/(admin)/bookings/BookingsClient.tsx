@@ -71,11 +71,13 @@ const emptyForm: CreateBookingDto = {
 
 function StatusBadge({ status }: { status: BookingStatus }) {
   const badgeStatus =
-    status === "confirmado" || status === "completado"
-      ? "confirmed"
-      : status === "cancelado"
-        ? "paid"
-        : "pending";
+    status === "completado"
+      ? "completed"
+      : status === "confirmado"
+        ? "confirmed"
+        : status === "cancelado"
+          ? "paid"
+          : "pending";
 
   return <span className={`badge badge--${badgeStatus}`}>{statusLabels[status]}</span>;
 }
