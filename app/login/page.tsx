@@ -166,9 +166,9 @@ export default function LoginPage() {
           <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
             Admin: admin@demo.com / admin123
             <br />
-            Negocio: manager1@example.com / manager123
+            Negocio: manager1@demo.com / manager123
             <br />
-            Cliente: juan.perez@example.com / password123
+            Cliente: cliente1@mail.com / cliente123
           </p>
         </div>
       </div>
