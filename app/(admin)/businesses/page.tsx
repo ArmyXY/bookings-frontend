@@ -26,6 +26,7 @@ const emptyForm: CreateBusinessDto = {
   description: "",
   openingTime: "09:00",
   closingTime: "20:00",
+  services: [],
 };
 
 export default function BusinessesPage() {
@@ -106,6 +107,7 @@ export default function BusinessesPage() {
       description: business.description ?? "",
       openingTime: business.openingTime,
       closingTime: business.closingTime,
+      services: business.services ?? [],
     });
     setIsFormOpen(true);
   }
@@ -132,6 +134,7 @@ export default function BusinessesPage() {
       description: form.description?.trim() || undefined,
       openingTime: form.openingTime,
       closingTime: form.closingTime,
+      services: form.services ?? [],
     };
 
     try {
@@ -328,6 +331,18 @@ export default function BusinessesPage() {
                 onChange={(e) => updateForm("description", e.target.value)}
                 placeholder="Descripcion"
               />
+              <div className="input-group input--full" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--muted)", display: "block" }}>
+                  Servicios ofrecidos (separados por comas)
+                </label>
+                <input
+                  className="input input--full"
+                  type="text"
+                  value={form.services?.join(", ") ?? ""}
+                  onChange={(e) => updateForm("services", e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                  placeholder="Ej. Corte clásico, Tinte, Peinado, Barba"
+                />
+              </div>
             </div>
 
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
@@ -501,7 +516,7 @@ export default function BusinessesPage() {
       {calendarBusiness && (
         <BusinessCalendar
           business={calendarBusiness}
-          appointments={allAppointments.filter(a => a.businessId === calendarBusiness.id)}
+          appointments={allAppointments.filter(a => a.businessId === calendarBusiness.id && a.status !== "cancelado")}
           onClose={() => setCalendarBusiness(null)}
         />
       )}

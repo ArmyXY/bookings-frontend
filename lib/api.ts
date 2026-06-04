@@ -52,6 +52,7 @@ export interface CreateBusinessDto {
   description?: string;
   openingTime: string;
   closingTime: string;
+  services?: string[];
 }
 
 export type UpdateBusinessDto = Partial<CreateBusinessDto>;
@@ -104,6 +105,16 @@ export function getCurrentUser(): Promise<AuthUser> {
 
 export function getAppointments(): Promise<Booking[]> {
   return request<Booking[]>("/appointments");
+}
+
+export interface OccupiedSlot {
+  businessId: number;
+  date: string;
+  time: string;
+}
+
+export function getAvailability(): Promise<OccupiedSlot[]> {
+  return request<OccupiedSlot[]>("/appointments/availability");
 }
 
 export function createAppointment(data: CreateBookingDto): Promise<Booking> {

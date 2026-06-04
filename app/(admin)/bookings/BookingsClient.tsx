@@ -30,6 +30,8 @@ import {
   updateAppointment,
   updateBusiness,
   updatePayment,
+  getAvailability,
+  type OccupiedSlot,
 } from "@/lib/api";
 import { PaymentMethod, type Business, type Customer } from "@/lib/types";
 import { useNotifications } from "@/components/providers/NotificationProvider";
@@ -212,6 +214,8 @@ export default function BookingsClient({
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
   const [businessRatings, setBusinessRatings] = useState<Record<number, number>>({});
   const [businessSearch, setBusinessSearch] = useState("");
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [occupiedSlots, setOccupiedSlots] = useState<OccupiedSlot[]>([]);
   const clientPageRef = useRef<HTMLDivElement>(null);
   const clientBookingPanelRef = useRef<HTMLElement>(null);
   const clientReservationsRef = useRef<HTMLElement>(null);
@@ -231,29 +235,27 @@ export default function BookingsClient({
       if (!user) return;
 
       try {
-        const [loadedBookings, loadedCustomers, businessesData] = await Promise.all([
+        const [loadedBookings, loadedCustomers, businessesData, availabilityData] = await Promise.all([
           getAppointments(),
-          getCustomers(),
+          isClient ? Promise.resolve([]) : getCustomers(),
           getBusinesses(),
+          isClient ? getAvailability() : Promise.resolve([]),
         ]);
         let customersData = loadedCustomers;
-        let defaultCustomerId = customersData[0]?.id ?? 0;
+        let defaultCustomerId = 0;
 
         if (isClient && user) {
-          let clientCustomer = customersData.find(
-            (customer) => customer.email.toLowerCase() === user.email.toLowerCase()
-          );
-
-          if (!clientCustomer) {
-            clientCustomer = await createCustomer({
-              name: user.name,
-              email: user.email,
-            });
-            customersData = [clientCustomer, ...customersData];
-          }
-
+          const clientCustomer: Customer = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: (user as any).phone || null,
+          };
+          customersData = [clientCustomer];
           defaultCustomerId = clientCustomer.id;
           setCurrentCustomer(clientCustomer);
+        } else {
+          defaultCustomerId = customersData[0]?.id ?? 0;
         }
 
         const defaultBusinessId = isBusiness && user.businessId
@@ -262,6 +264,9 @@ export default function BookingsClient({
         const userBusiness = businessesData.find((business) => business.id === defaultBusinessId);
 
         setBookings(loadedBookings);
+        if (isClient) {
+          setOccupiedSlots(availabilityData);
+        }
         setCustomers(customersData);
         knownCustomerIdsRef.current = new Set(customersData.map((c) => c.id));
         setBusinesses(businessesData);
@@ -292,6 +297,23 @@ export default function BookingsClient({
 
     loadRelations();
   }, [isBusiness, isClient, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(async () => {
+      try {
+        const loadedBookings = await getAppointments();
+        setBookings(loadedBookings);
+        if (isClient) {
+          const availability = await getAvailability();
+          setOccupiedSlots(availability);
+        }
+      } catch (err) {
+        console.error("Error polling appointments/availability:", err);
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [user, isClient]);
 
   useEffect(() => {
     if (!isClient || !clientPageRef.current) return;
@@ -493,7 +515,8 @@ export default function BookingsClient({
     return bookings.filter(
       (booking) =>
         booking.businessId === selectedBusiness.id &&
-        booking.date.startsWith(createForm.date)
+        booking.date.startsWith(createForm.date) &&
+        booking.status !== "cancelado"
     );
   }, [bookings, createForm.date, selectedBusiness]);
 
@@ -503,11 +526,22 @@ export default function BookingsClient({
       selectedDayBookings.map((booking) => booking.time.slice(0, 5))
     );
 
+    if (isClient) {
+      occupiedSlots.forEach((slot) => {
+        if (
+          slot.businessId === selectedBusiness.id &&
+          slot.date.startsWith(createForm.date)
+        ) {
+          bookedTimes.add(slot.time.slice(0, 5));
+        }
+      });
+    }
+
     return buildHourlySlots(selectedBusiness).map((slot) => ({
       value: slot,
       isBooked: bookedTimes.has(slot),
     }));
-  }, [selectedBusiness, selectedDayBookings]);
+  }, [selectedBusiness, selectedDayBookings, occupiedSlots, isClient, createForm.date]);
 
   const businessTodayBookings = useMemo(
     () =>
@@ -536,14 +570,16 @@ export default function BookingsClient({
   const businessSlots = useMemo(() => {
     if (!currentBusiness) return [];
     const bookedTimes = new Set(
-      businessSelectedDateBookings.map((booking) => booking.time.slice(0, 5))
+      businessSelectedDateBookings
+        .filter((booking) => booking.status !== "cancelado")
+        .map((booking) => booking.time.slice(0, 5))
     );
 
     return buildHourlySlots(currentBusiness).map((slot) => ({
       value: slot,
       isBooked: bookedTimes.has(slot),
       booking: businessSelectedDateBookings.find(
-        (booking) => booking.time.slice(0, 5) === slot
+        (booking) => booking.time.slice(0, 5) === slot && booking.status !== "cancelado"
       ),
     }));
   }, [businessSelectedDateBookings, currentBusiness]);
@@ -715,6 +751,21 @@ export default function BookingsClient({
         customerId: currentCustomer?.id ?? createForm.customerId,
         businessId: isBusiness ? user?.businessId ?? createForm.businessId : createForm.businessId,
       };
+
+      if (isClient) {
+        const isOccupied = occupiedSlots.some(
+          (slot) =>
+            slot.businessId === payload.businessId &&
+            slot.date.startsWith(payload.date) &&
+            slot.time.slice(0, 5) === payload.time.slice(0, 5)
+        );
+        if (isOccupied) {
+          setAlertMessage("Lo siento, se te han adelantado.");
+          setLoadingCreate(false);
+          return;
+        }
+      }
+
       const created = await createAppointment(payload);
       const enrichedCreated = {
         ...created,
@@ -730,8 +781,13 @@ export default function BookingsClient({
         description: `Nueva reserva para "${created.serviceName}" registrada con éxito.`,
         type: "success"
       });
-    } catch {
-      setErrorMessage("No se pudo crear la reserva. Revisa horario, cliente y negocio.");
+    } catch (err: any) {
+      const errMsg = err?.message || "";
+      if (errMsg.includes("Esta hora ya está reservada") || errMsg.includes("ya está reservada")) {
+        setAlertMessage("Lo siento, se te han adelantado.");
+      } else {
+        setErrorMessage("No se pudo crear la reserva. Revisa horario, cliente y negocio.");
+      }
       addNotification({
         title: "Error en Reserva",
         description: "No se pudo registrar la nueva reserva.",
@@ -990,14 +1046,34 @@ export default function BookingsClient({
             readOnly
           />
         )}
-        <input
-          className="input input--full"
-          type="text"
-          value={form.serviceName}
-          onChange={(e) => updateForm("serviceName", e.target.value)}
-          placeholder="Servicio"
-          required
-        />
+        {(() => {
+          const selectedBusinessForForm = businesses.find(b => b.id === form.businessId);
+          const businessServices = selectedBusinessForForm?.services ?? [];
+          return businessServices.length > 0 ? (
+            <select
+              className="select input--full"
+              value={form.serviceName}
+              onChange={(e) => updateForm("serviceName", e.target.value)}
+              required
+            >
+              <option value="">Selecciona servicio</option>
+              {businessServices.map((service) => (
+                <option key={service} value={service}>
+                  {service}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="input input--full"
+              type="text"
+              value={form.serviceName}
+              onChange={(e) => updateForm("serviceName", e.target.value)}
+              placeholder="Servicio"
+              required
+            />
+          );
+        })()}
         {includePaymentMethod ? (
           <select
             className="select input--full"
@@ -1179,14 +1255,30 @@ export default function BookingsClient({
                   onChange={(e) => updateCreateForm("date", e.target.value)}
                   required
                 />
-                <input
-                  className="input"
-                  type="text"
-                  value={createForm.serviceName}
-                  onChange={(e) => updateCreateForm("serviceName", e.target.value)}
-                  placeholder="Servicio"
-                  required
-                />
+                {selectedBusiness?.services && selectedBusiness.services.length > 0 ? (
+                  <select
+                    className="select"
+                    value={createForm.serviceName}
+                    onChange={(e) => updateCreateForm("serviceName", e.target.value)}
+                    required
+                  >
+                    <option value="">Selecciona servicio</option>
+                    {selectedBusiness.services.map((service) => (
+                      <option key={service} value={service}>
+                        {service}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="input"
+                    type="text"
+                    value={createForm.serviceName}
+                    onChange={(e) => updateCreateForm("serviceName", e.target.value)}
+                    placeholder="Servicio"
+                    required
+                  />
+                )}
                 <select
                   className="select"
                   value={createForm.paymentMethod ?? PaymentMethod.CASH}
@@ -1207,11 +1299,20 @@ export default function BookingsClient({
                     <button
                       key={slot.value}
                       type="button"
-                      className={`client-slot client-slot--tone-${index % 4} ${createForm.time === slot.value ? "client-slot--active" : ""}`}
-                      disabled={!isAvailable}
+                      className={`client-slot client-slot--tone-${index % 4} ${createForm.time === slot.value ? "client-slot--active" : ""} ${slot.isBooked ? "client-slot--booked" : ""}`}
                       title={isAvailable ? "Horario disponible" : "Horario no disponible"}
                       aria-label={`${slot.value} - ${isAvailable ? "disponible" : "no disponible"}`}
-                      onClick={() => updateCreateForm("time", slot.value)}
+                      onClick={() => {
+                        if (slot.isBooked) {
+                          setAlertMessage("Lo siento, se te han adelantado.");
+                        } else {
+                          updateCreateForm("time", slot.value);
+                        }
+                      }}
+                      style={{
+                        opacity: slot.isBooked ? 0.6 : 1,
+                        cursor: "pointer",
+                      }}
                     >
                       <span className="client-slot__icon" aria-hidden="true">
                         {isAvailable ? "🔓" : "🔒"}
@@ -1288,14 +1389,34 @@ export default function BookingsClient({
                             </option>
                           ))}
                         </select>
-                        <input
-                          className="input"
-                          type="text"
-                          value={editForm.serviceName}
-                          onChange={(e) => updateEditForm("serviceName", e.target.value)}
-                          placeholder="Servicio"
-                          required
+                        {(() => {
+                          const editBusiness = businesses.find(b => b.id === editForm.businessId);
+                          const editServices = editBusiness?.services ?? [];
+                          return editServices.length > 0 ? (
+                            <select
+                              className="select"
+                              value={editForm.serviceName}
+                              onChange={(e) => updateEditForm("serviceName", e.target.value)}
+                              required
+                            >
+                              <option value="">Selecciona servicio</option>
+                              {editServices.map((service) => (
+                                <option key={service} value={service}>
+                                  {service}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              className="input"
+                              type="text"
+                              value={editForm.serviceName}
+                              onChange={(e) => updateEditForm("serviceName", e.target.value)}
+                              placeholder="Servicio"
+                              required
                         />
+                          );
+                        })()}
                       </div>
                       <div className="message-row">
                         <button className="secondary-btn" type="button" onClick={closeEditForm}>
@@ -2842,6 +2963,73 @@ export default function BookingsClient({
           }
         }
       `}</style>
+
+      {alertMessage && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
+            display: "grid",
+            placeItems: "center",
+            background: "rgba(0, 0, 0, 0.4)",
+            backdropFilter: "blur(4px)",
+          }}
+          onClick={() => setAlertMessage(null)}
+        >
+          <div
+            className="alert alert-warning alert-dismissible show fade"
+            role="alert"
+            style={{
+              background: "#fff3cd",
+              color: "#664d03",
+              border: "1px solid #ffecb5",
+              padding: "24px 48px 24px 24px",
+              borderRadius: "12px",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+              maxWidth: "420px",
+              width: "90%",
+              position: "relative",
+              fontFamily: "var(--font-sans, system-ui, -apple-system, sans-serif)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+              <span style={{ fontSize: "28px", lineHeight: 1 }}>⚠️</span>
+              <div style={{ textAlign: "left" }}>
+                <strong style={{ fontSize: "16px", fontWeight: 800, display: "block", marginBottom: "4px" }}>
+                  Lo siento
+                </strong>
+                <span style={{ fontSize: "14px", fontWeight: 600 }}>
+                  {alertMessage}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn-close"
+              aria-label="Close"
+              style={{
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                background: "transparent",
+                border: "none",
+                fontSize: "24px",
+                lineHeight: 1,
+                cursor: "pointer",
+                color: "#664d03",
+                opacity: 0.7,
+                padding: "4px",
+                fontWeight: "bold",
+              }}
+              onClick={() => setAlertMessage(null)}
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
