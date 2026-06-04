@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { markPostLoginShutter } from "@/components/layout/PostLoginShutter";
 import { useGsapButtons } from "@/hooks/useGsapButtons";
+import alizarLogo from "@/app/Alizar.png";
 
 function getHomePath(user: { isClient: boolean; role?: string }) {
   if (user.role === "admin") return "/dashboard";
@@ -39,7 +41,7 @@ export default function LoginPage() {
       markPostLoginShutter();
       router.replace(getHomePath(response.user));
     } catch {
-      setErrorMessage("Credenciales invalidas o backend no disponible.");
+      setErrorMessage("Correo o contraseña incorrectos.");
     } finally {
       setLoading(false);
     }
@@ -70,15 +72,25 @@ export default function LoginPage() {
             style={{
               display: "inline-grid",
               placeItems: "center",
-              width: "64px",
-              height: "64px",
-              background: "rgba(212, 255, 0, 0.1)",
+              width: "150px",
+              height: "90px",
+              background: "#111111",
               borderRadius: "16px",
               border: "2px solid var(--primary)",
               marginBottom: "24px",
+              padding: "0px",
             }}
           >
-            <h2 style={{ margin: 0, color: "var(--text)", fontSize: "24px" }}>BF</h2>
+            <Image
+              src={alizarLogo}
+              alt="AliZar"
+              priority
+              style={{
+                width: "130px",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
           </div>
           <h1 style={{ fontSize: "24px", fontWeight: 800, margin: "0 0 8px" }}>
             Bienvenido de nuevo
@@ -154,9 +166,9 @@ export default function LoginPage() {
           <p style={{ fontSize: "13px", color: "var(--muted)", lineHeight: 1.6 }}>
             Admin: admin@demo.com / admin123
             <br />
-            Negocio: manager@demo.com / manager123
+            Negocio: manager1@example.com / manager123
             <br />
-            Cliente: cliente@demo.com / cliente123
+            Cliente: juan.perez@example.com / password123
           </p>
         </div>
       </div>

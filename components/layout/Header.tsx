@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import NotificationDropdown from "./NotificationDropdown";
@@ -8,22 +9,98 @@ import UserMenu from "./UserMenu";
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  
   const isAdmin = user?.role === "admin";
   const isBusiness = user?.role === "business";
+  const showRoleIcon = user?.role === "client" || isBusiness;
+  const title = isAdmin ? "Centro de Operaciones" : isBusiness ? "Area de negocio" : "Area de usuario";
 
   return (
-    <header className="admin-header">
-      <div>
-        <h1 className="admin-header__title" style={{ fontSize: "16px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted)" }}>
-          {isAdmin ? "Centro de Operaciones" : isBusiness ? "Area de negocio" : "Area de usuario"}
-        </h1>
-        <p className="admin-header__subtitle" style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginTop: "2px" }}>
-          {isAdmin ? "Panel de Control Administrativo" : isBusiness ? "Reservas y actividad reciente" : "Reservas y comercios disponibles"}
-        </p>
+    <header 
+      className="admin-header" 
+      style={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center",
+        width: "100%",
+        maxWidth: "1200px",
+        margin: "0 auto",
+        padding: "16px 24px",
+        boxSizing: "border-box"
+      }}
+    >
+      {/* SECCIÓN IZQUIERDA: Icono + Bloque de textos combinados */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        
+        {/* El icono ocupa exactamente el alto total del bloque de texto */}
+        {showRoleIcon && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+            <Image
+              src="/favicon.ico"
+              alt=""
+              width={40} 
+              height={40}
+              aria-hidden="true"
+              style={{ 
+                width: "auto", 
+                height: "36px", // Ajustado para que visualmente abarque las dos líneas de texto
+                objectFit: "contain", 
+                flex: "0 0 auto" 
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Bloque de textos con distribución controlada */}
+        <div style={{ 
+          display: "flex", 
+          flexDirection: "column", 
+          justifyContent: "space-between",
+          alignItems: "stretch" // Fuerza a los hijos directos a estirarse horizontalmente
+        }}>
+          <h1 
+            className="admin-header__title" 
+            style={{ 
+              fontSize: "16px", 
+              fontWeight: 800, 
+              textTransform: "uppercase", 
+              letterSpacing: "0.05em", 
+              color: "var(--muted)",
+              margin: 0,
+              lineHeight: "1.1",
+              display: "flex",
+              justifyContent: "space-between" // Si hay espacio extra, distribuye las letras/palabras
+            }}
+          >
+            {/* Mapeamos el título en caracteres si quisiéramos un justify perfecto, 
+                pero con flex-start o empuje se controla el final */}
+            <span style={{ display: "block", width: "100%" }}>{title}</span>
+          </h1>
+          
+          <p 
+            className="admin-header__subtitle" 
+            style={{ 
+              fontSize: "14px", 
+              fontWeight: 600, 
+              color: "var(--text)", 
+              margin: 0, 
+              marginTop: "2px",
+              lineHeight: "1.1",
+              whiteSpace: "nowrap",
+              display: "block"
+            }}
+          >
+            {isAdmin ? "Panel de Control Administrativo" : isBusiness ? "Reservas y actividad reciente" : "Reservas y comercios disponibles"}
+          </p>
+        </div>
       </div>
 
-      <div className="admin-header__actions" style={{ display: "flex", alignItems: "center", gap: "24px", overflow: "visible" }}>
-        {isAdmin || isBusiness ? <NotificationDropdown /> : null}
+      {/* SECCIÓN DERECHA: Botones de acción */}
+      <div 
+        className="admin-header__actions" 
+        style={{ display: "flex", alignItems: "center", gap: "24px", overflow: "visible" }}
+      >
+        {(isAdmin || isBusiness) && <NotificationDropdown />}
         
         <button
           onClick={toggleTheme}
@@ -49,10 +126,19 @@ export default function Header() {
             </svg>
           ) : (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
             </svg>
           )}
         </button>
+        
         <div style={{ width: "1px", height: "24px", background: "var(--border)" }}></div>
         <UserMenu />
       </div>

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { register } from "@/lib/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { markPostLoginShutter } from "@/components/layout/PostLoginShutter";
 import { useGsapButtons } from "@/hooks/useGsapButtons";
+import alizarLogo from "@/app/Alizar.png";
 
 export default function RegisterCustomerPage() {
   const [name, setName] = useState("");
@@ -72,15 +74,25 @@ export default function RegisterCustomerPage() {
             style={{
               display: "inline-grid",
               placeItems: "center",
-              width: "64px",
-              height: "64px",
-              background: "rgba(212, 255, 0, 0.1)",
+              width: "150px",
+              height: "90px",
+              background: "#111111",
               borderRadius: "16px",
               border: "2px solid var(--primary)",
               marginBottom: "24px",
+              padding: "0px",
             }}
           >
-            <h2 style={{ margin: 0, color: "var(--text)", fontSize: "24px" }}>BF</h2>
+            <Image
+              src={alizarLogo}
+              alt="AliZar"
+              priority
+              style={{
+                width: "130px",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
           </div>
           <h1 style={{ fontSize: "24px", fontWeight: 800, margin: "0 0 8px" }}>
             Crea tu cuenta
@@ -165,7 +177,7 @@ export default function RegisterCustomerPage() {
           </button>
           <button
             type="button"
-            className="secondary-btn"
+            className="Nuevo-btn"
             onClick={() => router.push("/login")}
           >
             Volver a inicio de sesión
