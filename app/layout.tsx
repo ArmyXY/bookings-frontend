@@ -1,10 +1,11 @@
 import "./globals.css";
-import "./professional.css";
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { NotificationProvider } from "@/components/providers/NotificationProvider";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 export const metadata: Metadata = {
-  title: "Panel de reservas",
+  title: "AliZar",
   description: "Base inicial del proyecto de gestion de reservas",
 };
 
@@ -17,7 +18,11 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <ThemeProvider>
-          {children}
+          <AuthProvider>
+            <NotificationProvider>
+              {children}
+            </NotificationProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

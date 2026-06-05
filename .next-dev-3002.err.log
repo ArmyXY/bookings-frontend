@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3001
+- PID:          2524
+- Dir:          C:\Users\Alejandro\OneDrive\Escritorio\Proyecto_practicas\bookings-frontend
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 2524 /F to stop it.

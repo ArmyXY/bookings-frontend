@@ -10,6 +10,13 @@ import {
 } from "@/lib/api";
 import type { CreateBusinessDto, UpdateBusinessDto } from "@/lib/api";
 import type { Business } from "@/lib/types";
+import { useNotifications } from "@/components/providers/NotificationProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
+import BusinessCalendar from "@/components/businesses/BusinessCalendar";
+import StatsCard from "@/components/ui/StatsCard";
+import ModalPortal from "@/components/ui/ModalPortal";
+import { getAppointments } from "@/lib/api";
+import type { Appointment } from "@/lib/types";
 
 const emptyForm: CreateBusinessDto = {
   name: "",
@@ -19,6 +26,7 @@ const emptyForm: CreateBusinessDto = {
   description: "",
   openingTime: "09:00",
   closingTime: "20:00",
+  services: [],
 };
 
 export default function BusinessesPage() {
@@ -33,20 +41,28 @@ export default function BusinessesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+  const [calendarBusiness, setCalendarBusiness] = useState<Business | null>(null);
+  const { user } = useAuth();
+  const isClient = user?.role === "client";
 
   useEffect(() => {
-    async function loadBusinesses() {
+    async function loadData() {
       try {
-        const data = await getBusinesses();
-        setBusinesses(data);
+        const [businessesData, appointmentsData] = await Promise.all([
+          getBusinesses(),
+          getAppointments()
+        ]);
+        setBusinesses(businessesData);
+        setAllAppointments(appointmentsData);
       } catch {
-        setErrorMessage("No se pudieron cargar los negocios.");
+        setErrorMessage("No se pudieron cargar los datos.");
       } finally {
         setLoading(false);
       }
     }
 
-    loadBusinesses();
+    loadData();
   }, []);
 
   const filteredBusinesses = useMemo(() => {
@@ -91,8 +107,12 @@ export default function BusinessesPage() {
       description: business.description ?? "",
       openingTime: business.openingTime,
       closingTime: business.closingTime,
+      services: business.services ?? [],
     });
     setIsFormOpen(true);
+    setTimeout(() => {
+      document.getElementById('edit-business-form')?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   }
 
   function closeForm() {
@@ -101,7 +121,9 @@ export default function BusinessesPage() {
     setIsFormOpen(false);
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    const { addNotification } = useNotifications();
+
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setErrorMessage("");
@@ -115,6 +137,7 @@ export default function BusinessesPage() {
       description: form.description?.trim() || undefined,
       openingTime: form.openingTime,
       closingTime: form.closingTime,
+      services: form.services ?? [],
     };
 
     try {
@@ -122,17 +145,32 @@ export default function BusinessesPage() {
         const created = await createBusiness(payload);
         setBusinesses((prev) => [created, ...prev]);
         setSuccessMessage("Negocio creado correctamente.");
+        addNotification({
+          title: "Negocio Creado",
+          description: `Se ha registrado el negocio "${payload.name}" correctamente.`,
+          type: "success"
+        });
       } else {
         const updated = await updateBusiness(editingId, payload as UpdateBusinessDto);
         setBusinesses((prev) =>
           prev.map((business) => (business.id === editingId ? updated : business))
         );
         setSuccessMessage("Negocio actualizado correctamente.");
+        addNotification({
+          title: "Negocio Actualizado",
+          description: `Los datos de "${payload.name}" han sido modificados.`,
+          type: "success"
+        });
       }
 
       closeForm();
     } catch {
       setErrorMessage("No se pudo guardar el negocio. Revisa los datos.");
+      addNotification({
+        title: "Error en Negocio",
+        description: "Hubo un fallo al intentar guardar el negocio.",
+        type: "error"
+      });
     } finally {
       setSaving(false);
     }
@@ -147,33 +185,92 @@ export default function BusinessesPage() {
 
     try {
       await deleteBusiness(deleteTarget.id);
+      const name = deleteTarget.name;
       setBusinesses((prev) =>
         prev.filter((business) => business.id !== deleteTarget.id)
       );
       setDeleteTarget(null);
       setSuccessMessage("Negocio eliminado correctamente.");
+      addNotification({
+        title: "Negocio Eliminado",
+        description: `El negocio "${name}" ha sido borrado del sistema.`,
+        type: "info"
+      });
     } catch {
       setErrorMessage("No se pudo eliminar el negocio. Puede tener reservas relacionadas.");
+      addNotification({
+        title: "Error al Eliminar",
+        description: "No se pudo borrar el negocio.",
+        type: "error"
+      });
     } finally {
       setDeleting(false);
     }
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-transition">
       <section className="page-hero">
-        <div>
-          <h2>Negocios</h2>
-          <p>Gestion de comercios, horarios y datos de contacto.</p>
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <h2>{isClient ? "Comercios disponibles" : "Negocios"}</h2>
+          <p>{isClient ? "Elige donde quieres realizar tu proxima reserva." : "Gestión de comercios, horarios y datos de contacto."}</p>
         </div>
 
-        <button className="primary-btn" type="button" onClick={openCreateForm}>
-          Nuevo negocio
-        </button>
+        {!isClient ? <div style={{ position: "relative", zIndex: 3 }}>
+          <button className="primary-btn" type="button" onClick={openCreateForm}>
+            Nuevo negocio
+          </button>
+        </div> : null}
+
+        <div style={{
+          position: "absolute",
+          top: "20px",
+          right: "40px",
+          opacity: 0.15,
+          color: "var(--primary)",
+          pointerEvents: "none",
+          transform: "rotate(8deg)"
+        }}>
+          <svg width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+        </div>
       </section>
 
-      {isFormOpen ? (
-        <section className="section-card">
+      <section className="kpi-grid">
+        <StatsCard
+          title="Total Negocios"
+          value={String(businesses.length)}
+          subtitle="Sedes registradas"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21v-4a3 3 0 0 1 6 0v4"/></svg>}
+        />
+        <StatsCard
+          title="Activos hoy"
+          value={String(businesses.length)}
+          subtitle="Operativos"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+        />
+        <StatsCard
+          title="Próxima apertura"
+          value="09:00"
+          subtitle="Horario estándar"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+        />
+        <StatsCard
+          title="Cierre promedio"
+          value="20:00"
+          subtitle="Horario estándar"
+          loading={loading}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+        />
+      </section>
+
+      {!isClient && isFormOpen ? (
+        <section id="edit-business-form" className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">
               {editingId === null ? "Nuevo negocio" : `Editar negocio #${editingId}`}
@@ -237,6 +334,18 @@ export default function BusinessesPage() {
                 onChange={(e) => updateForm("description", e.target.value)}
                 placeholder="Descripcion"
               />
+              <div className="input-group input--full" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--muted)", display: "block" }}>
+                  Servicios ofrecidos (separados por comas)
+                </label>
+                <input
+                  className="input input--full"
+                  type="text"
+                  value={form.services?.join(", ") ?? ""}
+                  onChange={(e) => updateForm("services", e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                  placeholder="Ej. Corte clásico, Tinte, Peinado, Barba"
+                />
+              </div>
             </div>
 
             {errorMessage ? <div className="message-error">{errorMessage}</div> : null}
@@ -251,14 +360,19 @@ export default function BusinessesPage() {
       ) : null}
 
       <section className="section-card">
-        <div className="search-row">
+        <form
+          className="search-row"
+          style={{ position: "relative", maxWidth: "600px", margin: "0 auto" }}
+          onSubmit={(e) => { e.preventDefault(); }}
+        >
           <input
             className="input"
+            style={{ height: "56px", fontSize: "16px" }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar negocio..."
+            placeholder="Buscar negocio por nombre, email o dirección..."
           />
-        </div>
+        </form>
       </section>
 
       {successMessage ? <div className="message-success">{successMessage}</div> : null}
@@ -267,13 +381,16 @@ export default function BusinessesPage() {
       <section className="section-card">
         <div className="panel-title-row">
           <h3 className="panel-title">Listado de negocios</h3>
-          <span style={{ color: "var(--muted)", fontSize: 14 }}>
-            {filteredBusinesses.length} resultados
+          <span style={{ color: "var(--muted)", fontSize: 14, fontWeight: 600 }}>
+            {filteredBusinesses.length.toString().padStart(2, '0')} NEGOCIOS REGISTRADOS
           </span>
         </div>
 
         {loading ? (
-          <p>Cargando negocios...</p>
+          <div style={{ padding: "40px", textAlign: "center" }}>
+            <div className="spinner" style={{ margin: "0 auto 16px" }}></div>
+            <p>Sincronizando negocios...</p>
+          </div>
         ) : (
           <table className="data-table">
             <thead>
@@ -281,47 +398,72 @@ export default function BusinessesPage() {
                 <th>ID</th>
                 <th>Nombre</th>
                 <th>Email</th>
-                <th>Telefono</th>
-                <th>Direccion</th>
+                <th>Teléfono</th>
+                <th>Dirección</th>
                 <th>Horario</th>
-                <th>Acciones</th>
+                <th style={{ textAlign: "right" }}>{isClient ? "Reservar" : "Acciones"}</th>
               </tr>
             </thead>
             <tbody>
               {filteredBusinesses.length > 0 ? (
                 filteredBusinesses.map((business) => (
                   <tr key={business.id}>
-                    <td style={{ fontWeight: 600 }}>{business.id}</td>
-                    <td>{business.name}</td>
+                    <td style={{ fontWeight: 700, color: "var(--muted)" }}>#{business.id}</td>
+                    <td style={{ fontWeight: 600 }}>{business.name}</td>
                     <td>{business.email}</td>
                     <td>{business.phone}</td>
-                    <td>{business.address}</td>
+                    <td style={{ color: "var(--muted)" }}>{business.address}</td>
                     <td>
-                      {business.openingTime} - {business.closingTime}
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "4px 12px",
+                        borderRadius: "100px",
+                        background: "var(--surface-2)",
+                        fontSize: "12px",
+                        fontWeight: 700
+                      }}>
+                        {business.openingTime} — {business.closingTime}
+                      </span>
                     </td>
                     <td>
-                      <div className="table-actions">
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                         <button
-                          className="secondary-btn table-action-btn"
+                          className="primary-btn"
                           type="button"
+                          style={{ padding: "8px 16px", fontSize: "13px", height: "auto" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCalendarBusiness(business);
+                          }}
+                        >
+                          {isClient ? "Ver horarios" : "Calendario"}
+                        </button>
+                        {!isClient ? <button
+                          className="secondary-btn"
+                          type="button"
+                          style={{ padding: "8px 16px" }}
                           onClick={() => openEditForm(business)}
                         >
                           Editar
-                        </button>
-                        <button
-                          className="secondary-btn table-action-btn"
+                        </button> : null}
+                        {!isClient ? <button
+                          className="secondary-btn"
                           type="button"
+                          style={{ padding: "8px 16px", borderColor: "rgba(255, 59, 48, 0.1)", color: "#FF3B30" }}
                           onClick={() => setDeleteTarget(business)}
                         >
                           Eliminar
-                        </button>
+                        </button> : null}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="empty-table-cell">
+                  <td colSpan={7} style={{ textAlign: "center", padding: "64px", color: "var(--muted)" }}>
+                    <div style={{ fontSize: "32px", marginBottom: "12px", opacity: 0.5 }}>∅</div>
                     No hay negocios registrados.
                   </td>
                 </tr>
@@ -332,38 +474,55 @@ export default function BusinessesPage() {
       </section>
 
       {deleteTarget ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDeleteTarget(null);
-          }}
-        >
-          <div className="modal-card">
-            <div className="modal-icon">!</div>
-            <h3 className="modal-title">Eliminar negocio</h3>
-            <p className="modal-text">Seguro que quieres eliminar {deleteTarget.name}?</p>
-            <div className="modal-actions">
-              <button
-                className="secondary-btn"
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="danger-btn"
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleting}
-              >
-                {deleting ? "Eliminando..." : "Eliminar"}
-              </button>
+        <ModalPortal>
+          <div
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDeleteTarget(null);
+            }}
+          >
+            <div className="modal-card">
+              <div className="modal-icon">!</div>
+              <h3 className="modal-title">Eliminar negocio</h3>
+              <p className="modal-text">¿Seguro que quieres eliminar <strong>{deleteTarget.name}</strong>? Esta acción no se puede deshacer.</p>
+              <div className="modal-actions">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="danger-btn"
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  {deleting ? (
+                    <>
+                      <div className="spinner spinner--sm"></div>
+                      <span>Eliminando...</span>
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       ) : null}
+      {calendarBusiness && (
+        <BusinessCalendar
+          business={calendarBusiness}
+          appointments={allAppointments.filter(a => a.businessId === calendarBusiness.id && a.status !== "cancelado")}
+          onClose={() => setCalendarBusiness(null)}
+        />
+      )}
     </div>
   );
 }

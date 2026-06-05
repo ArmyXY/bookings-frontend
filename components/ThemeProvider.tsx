@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useSyncExternalStore } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
@@ -11,51 +11,26 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_CHANGE_EVENT = "bookings-theme-change";
-
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "light" || savedTheme === "dark") {
-    return savedTheme;
-  }
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
-function subscribeToThemeChanges(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener(THEME_CHANGE_EVENT, callback);
-
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  mediaQuery.addEventListener("change", callback);
-
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(THEME_CHANGE_EVENT, callback);
-    mediaQuery.removeEventListener("change", callback);
-  };
-}
-
-function getServerTheme(): Theme {
-  return "light";
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const theme = useSyncExternalStore(subscribeToThemeChanges, getStoredTheme, getServerTheme);
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    const savedTheme = localStorage.getItem("theme") as Theme;
+    if (savedTheme) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTheme(savedTheme);
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setTheme("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
     localStorage.setItem("theme", newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
-    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
   };
 
   return (

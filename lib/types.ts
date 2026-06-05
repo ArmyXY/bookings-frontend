@@ -18,6 +18,7 @@ export type Business = {
   openingTime: string;
   closingTime: string;
   createdAt?: string;
+  services?: string[];
   appointments?: Appointment[];
   payments?: Payment[];
 };
@@ -87,4 +88,20 @@ export type DashboardStats = {
       date: string;
     }[];
   };
+};
+
+export type AuthUser = {
+  id: number;
+  name: string;
+  email: string;
+  isClient: boolean;
+  role?: "client" | "admin" | "business";
+  businessId?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AuthResponse = {
+  accessToken: string;
+  user: AuthUser;
 };
