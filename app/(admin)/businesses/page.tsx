@@ -110,6 +110,9 @@ export default function BusinessesPage() {
       services: business.services ?? [],
     });
     setIsFormOpen(true);
+    setTimeout(() => {
+      document.getElementById('edit-business-form')?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   }
 
   function closeForm() {
@@ -267,7 +270,7 @@ export default function BusinessesPage() {
       </section>
 
       {!isClient && isFormOpen ? (
-        <section className="section-card">
+        <section id="edit-business-form" className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">
               {editingId === null ? "Nuevo negocio" : `Editar negocio #${editingId}`}

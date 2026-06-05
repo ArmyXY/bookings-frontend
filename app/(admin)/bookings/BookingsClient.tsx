@@ -710,6 +710,11 @@ export default function BookingsClient({
       businessId: booking.businessId,
       serviceName: booking.serviceName,
     });
+    if (!isClient && !isBusiness) {
+      setTimeout(() => {
+        document.getElementById('edit-booking-form')?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    }
   }
 
   function closeEditForm() {
@@ -2290,7 +2295,7 @@ export default function BookingsClient({
       ) : null}
 
       {!isClient && !isBusiness && editingBookingId !== null ? (
-        <section className="section-card">
+        <section id="edit-booking-form" className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">Editar reserva #{editingBookingId}</h3>
             <button type="button" className="secondary-btn" onClick={closeEditForm}>

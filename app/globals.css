@@ -1076,3 +1076,19 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   color: var(--primary) !important;
   transform: translateY(-2px) !important;
 }
+
+.action-link {
+  color: #6A8000;
+  font-weight: 800;
+  font-size: 13px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.action-link:hover {
+  text-decoration: underline;
+}
+
+[data-theme="dark"] .action-link {
+  color: var(--primary);
+}

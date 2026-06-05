@@ -100,6 +100,9 @@ export default function CustomersPage() {
       password: "",
     });
     setIsFormOpen(true);
+    setTimeout(() => {
+      document.getElementById('edit-customer-form')?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
   }
 
   const { addNotification } = useNotifications();
@@ -224,7 +227,7 @@ export default function CustomersPage() {
       </section>
 
       {isFormOpen && (
-        <section className="section-card">
+        <section id="edit-customer-form" className="section-card">
           <div className="panel-title-row">
             <h3 className="panel-title">
               {editingId === null ? "Nuevo cliente" : `Editar cliente #${editingId}`}

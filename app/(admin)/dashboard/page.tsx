@@ -531,7 +531,7 @@ export default function DashboardPage() {
                     <td style={{ color: "var(--muted)", fontWeight: 600, fontSize: "14px" }}>{formatDate(booking.date)}</td>
                     <td><Badge status={booking.status} /></td>
                     <td style={{ paddingRight: "40px", textAlign: "right" }}>
-                      <Link href={`/bookings`} style={{ color: "var(--primary)", fontWeight: 800, fontSize: "13px", textDecoration: "none" }}>Detalles</Link>
+                      <Link href={`/bookings`} className="action-link">Detalles</Link>
                     </td>
                   </tr>
                 ))}
