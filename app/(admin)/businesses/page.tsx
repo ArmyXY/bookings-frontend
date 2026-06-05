@@ -17,6 +17,7 @@ import StatsCard from "@/components/ui/StatsCard";
 import ModalPortal from "@/components/ui/ModalPortal";
 import { getAppointments } from "@/lib/api";
 import type { Appointment } from "@/lib/types";
+import { useTableSort } from "@/hooks/useTableSort";
 
 const emptyForm: CreateBusinessDto = {
   name: "",
@@ -76,6 +77,8 @@ export default function BusinessesPage() {
     );
   }, [businesses, search]);
 
+  const { requestSort, sortedData: sortedBusinesses, renderSortIcon } = useTableSort(filteredBusinesses, 'id', 'asc');
+
   function updateForm<K extends keyof CreateBusinessDto>(
     key: K,
     value: CreateBusinessDto[K]
@@ -121,9 +124,9 @@ export default function BusinessesPage() {
     setIsFormOpen(false);
   }
 
-    const { addNotification } = useNotifications();
+  const { addNotification } = useNotifications();
 
-    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setErrorMessage("");
@@ -244,28 +247,28 @@ export default function BusinessesPage() {
           value={String(businesses.length)}
           subtitle="Sedes registradas"
           loading={loading}
-          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21v-4a3 3 0 0 1 6 0v4"/></svg>}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 21h18M3 7l9-4 9 4M4 7v14M20 7v14M9 21v-4a3 3 0 0 1 6 0v4" /></svg>}
         />
         <StatsCard
           title="Activos hoy"
           value={String(businesses.length)}
           subtitle="Operativos"
           loading={loading}
-          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
         />
         <StatsCard
           title="Próxima apertura"
           value="09:00"
           subtitle="Horario estándar"
           loading={loading}
-          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>}
         />
         <StatsCard
           title="Cierre promedio"
           value="20:00"
           subtitle="Horario estándar"
           loading={loading}
-          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>}
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>}
         />
       </section>
 
@@ -382,7 +385,7 @@ export default function BusinessesPage() {
         <div className="panel-title-row">
           <h3 className="panel-title">Listado de negocios</h3>
           <span style={{ color: "var(--muted)", fontSize: 14, fontWeight: 600 }}>
-            {filteredBusinesses.length.toString().padStart(2, '0')} NEGOCIOS REGISTRADOS
+            {sortedBusinesses.length.toString().padStart(2, '0')} NEGOCIOS REGISTRADOS
           </span>
         </div>
 
@@ -395,18 +398,18 @@ export default function BusinessesPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Teléfono</th>
-                <th>Dirección</th>
-                <th>Horario</th>
+                <th className="sortable-header" onClick={() => requestSort('id')}>ID {renderSortIcon('id')}</th>
+                <th className="sortable-header" onClick={() => requestSort('name')}>Nombre {renderSortIcon('name')}</th>
+                <th className="sortable-header" onClick={() => requestSort('email')}>Email {renderSortIcon('email')}</th>
+                <th className="sortable-header" onClick={() => requestSort('phone')}>Teléfono {renderSortIcon('phone')}</th>
+                <th className="sortable-header" onClick={() => requestSort('address')}>Dirección {renderSortIcon('address')}</th>
+                <th className="sortable-header" onClick={() => requestSort('openingTime')}>Horario {renderSortIcon('openingTime')}</th>
                 <th style={{ textAlign: "right" }}>{isClient ? "Reservar" : "Acciones"}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredBusinesses.length > 0 ? (
-                filteredBusinesses.map((business) => (
+              {sortedBusinesses.length > 0 ? (
+                sortedBusinesses.map((business) => (
                   <tr key={business.id}>
                     <td style={{ fontWeight: 700, color: "var(--muted)" }}>#{business.id}</td>
                     <td style={{ fontWeight: 600 }}>{business.name}</td>
