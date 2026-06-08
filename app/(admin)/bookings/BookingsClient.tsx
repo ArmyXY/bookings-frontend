@@ -563,9 +563,15 @@ export default function BookingsClient({
   );
 
   const businessDisplayBookings = useMemo(() => {
-    if (!isBusiness) return filteredBookings;
-    if (statusFilter === "all") return businessSelectedDateBookings;
-    return businessSelectedDateBookings.filter((booking) => booking.status === statusFilter);
+    let list = filteredBookings;
+    if (isBusiness) {
+      list = statusFilter === "all" ? businessSelectedDateBookings : businessSelectedDateBookings.filter((booking) => booking.status === statusFilter);
+    }
+    return list.map((booking) => ({
+      ...booking,
+      customerName: getCustomerName(booking),
+      paymentMethodName: getPaymentMethodLabel(booking),
+    }));
   }, [businessSelectedDateBookings, filteredBookings, isBusiness, statusFilter]);
 
   const { requestSort: requestBookingSort, sortedData: sortedBookings, renderSortIcon: renderBookingSortIcon } = useTableSort(businessDisplayBookings, 'date', 'desc');
@@ -2396,8 +2402,8 @@ export default function BookingsClient({
               <th className="sortable-header" onClick={() => requestBookingSort('date')}>Fecha {renderBookingSortIcon('date')}</th>
               <th className="sortable-header" onClick={() => requestBookingSort('time')}>Hora {renderBookingSortIcon('time')}</th>
               <th className="sortable-header" onClick={() => requestBookingSort('serviceName')}>Servicio {renderBookingSortIcon('serviceName')}</th>
-              {!isClient ? <th className="sortable-header" onClick={() => requestBookingSort('customerId')}>Cliente {renderBookingSortIcon('customerId')}</th> : null}
-              <th>Metodo de pago</th>
+              {!isClient ? <th className="sortable-header" onClick={() => requestBookingSort('customerName')}>Cliente {renderBookingSortIcon('customerName')}</th> : null}
+              <th className="sortable-header" onClick={() => requestBookingSort('paymentMethodName')}>Metodo de pago {renderBookingSortIcon('paymentMethodName')}</th>
               <th className="sortable-header" onClick={() => requestBookingSort('status')}>Estado {renderBookingSortIcon('status')}</th>
               {!isClient ? <th style={{ textAlign: "right" }}>Acciones</th> : null}
             </tr>
