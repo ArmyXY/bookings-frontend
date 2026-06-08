@@ -40,6 +40,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import NotificationDropdown from "@/components/layout/NotificationDropdown";
 import StatsCard from "@/components/ui/StatsCard";
 import ModalPortal from "@/components/ui/ModalPortal";
+import { useTableSort } from "@/hooks/useTableSort";
 
 const statusLabels: Record<BookingStatus, string> = {
   pendiente: "Pendiente",
@@ -562,10 +563,18 @@ export default function BookingsClient({
   );
 
   const businessDisplayBookings = useMemo(() => {
-    if (!isBusiness) return filteredBookings;
-    if (statusFilter === "all") return businessSelectedDateBookings;
-    return businessSelectedDateBookings.filter((booking) => booking.status === statusFilter);
+    let list = filteredBookings;
+    if (isBusiness) {
+      list = statusFilter === "all" ? businessSelectedDateBookings : businessSelectedDateBookings.filter((booking) => booking.status === statusFilter);
+    }
+    return list.map((booking) => ({
+      ...booking,
+      customerName: getCustomerName(booking),
+      paymentMethodName: getPaymentMethodLabel(booking),
+    }));
   }, [businessSelectedDateBookings, filteredBookings, isBusiness, statusFilter]);
+
+  const { requestSort: requestBookingSort, sortedData: sortedBookings, renderSortIcon: renderBookingSortIcon } = useTableSort(businessDisplayBookings, 'date', 'desc');
 
   const businessSlots = useMemo(() => {
     if (!currentBusiness) return [];
@@ -2389,18 +2398,18 @@ export default function BookingsClient({
         <table className="data-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Servicio</th>
-              {!isClient ? <th>Cliente</th> : null}
-              <th>Metodo de pago</th>
-              <th>Estado</th>
+              <th className="sortable-header" onClick={() => requestBookingSort('id')}>ID {renderBookingSortIcon('id')}</th>
+              <th className="sortable-header" onClick={() => requestBookingSort('date')}>Fecha {renderBookingSortIcon('date')}</th>
+              <th className="sortable-header" onClick={() => requestBookingSort('time')}>Hora {renderBookingSortIcon('time')}</th>
+              <th className="sortable-header" onClick={() => requestBookingSort('serviceName')}>Servicio {renderBookingSortIcon('serviceName')}</th>
+              {!isClient ? <th className="sortable-header" onClick={() => requestBookingSort('customerName')}>Cliente {renderBookingSortIcon('customerName')}</th> : null}
+              <th className="sortable-header" onClick={() => requestBookingSort('paymentMethodName')}>Metodo de pago {renderBookingSortIcon('paymentMethodName')}</th>
+              <th className="sortable-header" onClick={() => requestBookingSort('status')}>Estado {renderBookingSortIcon('status')}</th>
               {!isClient ? <th style={{ textAlign: "right" }}>Acciones</th> : null}
             </tr>
           </thead>
           <tbody>
-            {businessDisplayBookings.length > 0 ? businessDisplayBookings.map((booking) => (
+            {sortedBookings.length > 0 ? sortedBookings.map((booking) => (
               <tr key={booking.id}>
                 <td style={{ fontWeight: 700, color: "var(--muted)" }}>#{booking.id}</td>
                 <td>{formatDate(booking.date)}</td>

@@ -36,6 +36,7 @@ import {
 
 import Skeleton from "@/components/ui/Skeleton";
 import StatsCard from "@/components/ui/StatsCard";
+import { useTableSort } from "@/hooks/useTableSort";
 
 const appointmentStatusLabels: Record<AppointmentStatus, string> = {
   pendiente: "Pendiente",
@@ -115,6 +116,15 @@ export default function DashboardPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const displayDashBookings = useMemo(() => {
+    return bookings.map((booking) => ({
+      ...booking,
+      customerName: booking.customer?.name || "Cliente",
+    }));
+  }, [bookings]);
+
+  const { requestSort: requestDashSort, sortedData: sortedDashBookings, renderSortIcon: renderDashSortIcon } = useTableSort(displayDashBookings, 'date', 'desc');
 
   const loadDashboard = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -515,14 +525,14 @@ export default function DashboardPage() {
             <table className="data-table">
               <thead style={{ background: "var(--surface-2)" }}>
                 <tr>
-                  <th style={{ paddingLeft: "40px" }}>Detalle</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
+                  <th style={{ paddingLeft: "40px" }} className="sortable-header" onClick={() => requestDashSort('customerName')}>Detalle {renderDashSortIcon('customerName')}</th>
+                  <th className="sortable-header" onClick={() => requestDashSort('date')}>Fecha {renderDashSortIcon('date')}</th>
+                  <th className="sortable-header" onClick={() => requestDashSort('status')}>Estado {renderDashSortIcon('status')}</th>
                   <th style={{ paddingRight: "40px", textAlign: "right" }}>Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {bookings.slice(0, 6).map((booking) => (
+                {sortedDashBookings.slice(0, 6).map((booking) => (
                   <tr key={booking.id}>
                     <td style={{ paddingLeft: "40px" }}>
                       <div style={{ fontWeight: 800, fontSize: "15px" }}>{booking.customer?.name || "Cliente"}</div>

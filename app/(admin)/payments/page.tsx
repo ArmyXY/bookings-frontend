@@ -8,6 +8,8 @@ import { useNotifications } from "@/components/providers/NotificationProvider";
 import StatsCard from "@/components/ui/StatsCard";
 import ModalPortal from "@/components/ui/ModalPortal";
 
+import { useTableSort } from "@/hooks/useTableSort";
+
 const paymentStatusLabels: Record<PaymentStatus, string> = {
   pendiente: "Pendiente",
   pagado: "Pagado",
@@ -122,6 +124,18 @@ export default function PaymentsPage() {
   const filteredPayments = useMemo(() => {
     return payments.filter((payment) => matchesStatusFilter(payment, statusFilter));
   }, [payments, statusFilter]);
+
+  const displayPayments = useMemo(() => {
+    return filteredPayments.map((payment) => ({
+      ...payment,
+      reference: `#PY-${String(payment.id).padStart(3, '0')}`,
+      operationName: `Reserva #${payment.appointmentId} (${getCustomerName(payment)})`,
+      methodLabel: paymentMethodLabels[payment.method],
+      statusLabel: paymentStatusLabels[payment.status],
+    }));
+  }, [filteredPayments]);
+
+  const { requestSort, sortedData: sortedPayments, renderSortIcon } = useTableSort(displayPayments, 'id', 'desc');
 
   const { addNotification } = useNotifications();
 
@@ -280,20 +294,20 @@ export default function PaymentsPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Referencia</th>
-                <th>Operación</th>
-                <th>Importe</th>
-                <th>Método</th>
-                <th>Fecha</th>
-                <th>Estado</th>
+                <th className="sortable-header" onClick={() => requestSort('reference')}>Referencia {renderSortIcon('reference')}</th>
+                <th className="sortable-header" onClick={() => requestSort('operationName')}>Operación {renderSortIcon('operationName')}</th>
+                <th className="sortable-header" onClick={() => requestSort('amount')}>Importe {renderSortIcon('amount')}</th>
+                <th className="sortable-header" onClick={() => requestSort('methodLabel')}>Método {renderSortIcon('methodLabel')}</th>
+                <th className="sortable-header" onClick={() => requestSort('createdAt')}>Fecha {renderSortIcon('createdAt')}</th>
+                <th className="sortable-header" onClick={() => requestSort('statusLabel')}>Estado {renderSortIcon('statusLabel')}</th>
                 <th style={{ textAlign: "right" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.map((payment) => (
+              {sortedPayments.map((payment) => (
                 <tr key={payment.id}>
-                  <td style={{ fontWeight: 700, color: "var(--muted)" }}>#PY-{String(payment.id).padStart(3, '0')}</td>
-                  <td style={{ color: "var(--text)", fontWeight: 500 }}>Reserva #{payment.appointmentId} <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 8 }}>({getCustomerName(payment)})</span></td>
+                  <td style={{ fontWeight: 700, color: "var(--muted)" }}>{payment.reference}</td>
+                  <td style={{ color: "var(--text)", fontWeight: 500 }}>Reserva #{payment.appointmentId} <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 8 }}>({getCustomerName(payment as any)})</span></td>
                   <td style={{ fontWeight: 800, fontSize: "16px" }}>{Number(payment.amount).toFixed(2)} €</td>
                   <td style={{ textTransform: "uppercase", fontSize: "12px", fontWeight: 700 }}>{paymentMethodLabels[payment.method]}</td>
                   <td>{new Date(payment.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</td>
