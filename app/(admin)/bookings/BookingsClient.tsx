@@ -598,6 +598,14 @@ export default function BookingsClient({
     [businessSelectedDate]
   );
 
+  const totalSpent = useMemo(() => {
+    if (!isClient || !currentCustomer) return 0;
+    return visibleBookings.reduce((sum, booking) => {
+      const amount = booking.payments?.[0]?.amount;
+      return sum + (amount ? Number(amount) : 0);
+    }, 0);
+  }, [isClient, currentCustomer, visibleBookings]);
+
   const businessStatusChart = useMemo(
     () =>
       (Object.keys(statusLabels) as BookingStatus[]).map((status) => ({
@@ -1364,9 +1372,14 @@ export default function BookingsClient({
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '8px', color: 'var(--primary)' }}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/><path d="M12 5v14"/></svg>
               Mis reservas
             </h3>
-            <span style={{ color: "var(--muted)", fontWeight: 800 }}>
-              {filteredBookings.length} reservas
-            </span>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <span style={{ color: "var(--primary)", fontWeight: 800 }}>
+                Total gastado: {totalSpent.toFixed(2)} €
+              </span>
+              <span style={{ color: "var(--muted)", fontWeight: 800 }}>
+                {filteredBookings.length} reservas
+              </span>
+            </div>
           </div>
 
           <div className="client-reservation-list">
@@ -1459,7 +1472,7 @@ export default function BookingsClient({
                         </span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--muted)' }}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                          Pago: {getPaymentMethodLabel(booking)}
+                          Pago: {getPaymentMethodLabel(booking)} - {booking.payments?.[0]?.amount != null ? `${Number(booking.payments[0].amount).toFixed(2)} €` : "0.00 €"}
                         </span>
                       </div>
                       <div className="client-reservation-actions">
