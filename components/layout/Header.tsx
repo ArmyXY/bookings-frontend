@@ -1,14 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import NotificationDropdown from "./NotificationDropdown";
 import UserMenu from "./UserMenu";
+import CreateRewardModal from "@/components/rewards/CreateRewardModal";
+import GivePointsModal from "@/components/rewards/GivePointsModal";
+import CustomerRewardsModal from "@/components/rewards/CustomerRewardsModal";
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  
+  const [showCreateReward, setShowCreateReward] = useState(false);
+  const [showGivePoints, setShowGivePoints] = useState(false);
+  const [showCustomerRewards, setShowCustomerRewards] = useState(false);
   
   const isAdmin = user?.role === "admin";
   const isBusiness = user?.role === "business";
@@ -98,8 +106,89 @@ export default function Header() {
       {/* SECCIÓN DERECHA: Botones de acción */}
       <div 
         className="admin-header__actions" 
-        style={{ display: "flex", alignItems: "center", gap: "24px", overflow: "visible" }}
+        style={{ display: "flex", alignItems: "center", gap: "16px", overflow: "visible" }}
       >
+        {isBusiness && (
+          <>
+            <button
+              onClick={() => setShowCreateReward(true)}
+              className="theme-toggle-btn"
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: "42px",
+                height: "42px",
+                padding: 0,
+                borderRadius: "12px",
+                border: "1.5px solid var(--border)",
+                background: "var(--surface-2)",
+                color: "var(--text)",
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }}
+              title="Crear Recompensa"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            
+            <button
+              onClick={() => setShowGivePoints(true)}
+              className="theme-toggle-btn"
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: "42px",
+                height: "42px",
+                padding: 0,
+                borderRadius: "12px",
+                border: "1.5px solid var(--border)",
+                background: "var(--surface-2)",
+                color: "var(--text)",
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }}
+              title="Asignar Puntos"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+                <path d="M12 18V6"/>
+              </svg>
+            </button>
+          </>
+        )}
+
+        {user?.role === "client" && (
+          <button
+            onClick={() => setShowCustomerRewards(true)}
+            className="theme-toggle-btn"
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: "42px",
+              height: "42px",
+              padding: 0,
+              borderRadius: "12px",
+              border: "1.5px solid var(--border)",
+              background: "var(--surface-2)",
+              color: "var(--text)",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
+            title="Mis Recompensas"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 12 20 22 4 22 4 12"></polyline>
+              <rect x="2" y="7" width="20" height="5"></rect>
+              <line x1="12" y1="22" x2="12" y2="7"></line>
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+            </svg>
+          </button>
+        )}
+
         {(isAdmin || isBusiness) && <NotificationDropdown />}
         
         <button
@@ -121,11 +210,11 @@ export default function Header() {
           title={theme === "light" ? "Modo Oscuro" : "Modo Claro"}
         >
           {theme === "light" ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="5" />
               <line x1="12" y1="1" x2="12" y2="3" />
               <line x1="12" y1="21" x2="12" y2="23" />
@@ -142,6 +231,31 @@ export default function Header() {
         <div style={{ width: "1px", height: "24px", background: "var(--border)" }}></div>
         <UserMenu />
       </div>
+
+      {/* MODALES */}
+      {showCreateReward && (
+        <CreateRewardModal
+          onClose={() => setShowCreateReward(false)}
+          onSuccess={() => {
+            alert("Recompensa creada con éxito");
+          }}
+        />
+      )}
+
+      {showGivePoints && (
+        <GivePointsModal
+          onClose={() => setShowGivePoints(false)}
+          onSuccess={() => {
+            alert("Puntos asignados con éxito");
+          }}
+        />
+      )}
+
+      {showCustomerRewards && (
+        <CustomerRewardsModal
+          onClose={() => setShowCustomerRewards(false)}
+        />
+      )}
     </header>
   );
 }

@@ -213,3 +213,66 @@ export function updateBusiness(
 export function deleteBusiness(id: number): Promise<void> {
   return request<void>(`/businesses/${id}`, { method: "DELETE" });
 }
+
+// Recompensas y Puntos
+
+export interface Reward {
+  id: number;
+  name: string;
+  description: string;
+  pointsCost: number;
+  businessId: number;
+  business?: Business;
+}
+
+export interface CustomerPoints {
+  id: number;
+  customerId: number;
+  businessId: number;
+  points: number;
+  business: Business;
+}
+
+export interface RedeemedReward {
+  id: number;
+  customerId: number;
+  rewardId: number;
+  isUsed: boolean;
+  reward: Reward;
+}
+
+export function createReward(data: { name: string; description: string; pointsCost: number }): Promise<Reward> {
+  return request<Reward>("/rewards/business", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getBusinessRewards(): Promise<Reward[]> {
+  return request<Reward[]>("/rewards/business");
+}
+
+export function getRewardsByBusiness(businessId: number): Promise<Reward[]> {
+  return request<Reward[]>(`/rewards/business/${businessId}`);
+}
+
+export function addPointsToCustomer(customerId: number, points: number): Promise<CustomerPoints> {
+  return request<CustomerPoints>("/rewards/business/points", {
+    method: "POST",
+    body: JSON.stringify({ customerId, points }),
+  });
+}
+
+export function getCustomerPoints(): Promise<CustomerPoints[]> {
+  return request<CustomerPoints[]>("/rewards/my-points");
+}
+
+export function redeemReward(rewardId: number): Promise<RedeemedReward> {
+  return request<RedeemedReward>(`/rewards/redeem/${rewardId}`, {
+    method: "POST",
+  });
+}
+
+export function getCustomerRedeemedRewards(): Promise<RedeemedReward[]> {
+  return request<RedeemedReward[]>("/rewards/my-rewards");
+}
