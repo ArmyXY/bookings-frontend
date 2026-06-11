@@ -56,6 +56,7 @@ export interface CreateBusinessDto {
   openingTime: string;
   closingTime: string;
   services?: string[];
+  pointsPerEuro?: number;
 }
 
 export type UpdateBusinessDto = Partial<CreateBusinessDto>;
@@ -223,10 +224,11 @@ export interface CreateRewardDto {
   name: string;
   description: string;
   costPoints: number;
+  expiresAt: string;
 }
 
 export function createReward(data: CreateRewardDto): Promise<Reward> {
-  return request<Reward>("/rewards", {
+  return request<Reward>("/rewards/business", {
     method: "POST",
     body: JSON.stringify(data),
   });

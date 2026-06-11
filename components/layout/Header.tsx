@@ -10,7 +10,7 @@ import UserMenu from "./UserMenu";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Reward = {
   id: number; name: string; description: string;
-  costPoints: number; businessId: number;
+  pointsCost: number; businessId: number;
 };
 type CustomerPoints = { id: number; customerId: number; points: number };
 type RedeemedReward = { id: number; rewardId: number; redeemedAt: string; reward?: Reward };
@@ -34,8 +34,8 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return text ? JSON.parse(text) : (undefined as T);
 }
 const api = {
-  createReward: (data: { name: string; description: string; costPoints: number }) =>
-    req<Reward>("/rewards", { method: "POST", body: JSON.stringify(data) }),
+  createReward: (data: { name: string; description: string; pointsCost: number; expiresAt: string }) =>
+    req<Reward>("/rewards/business", { method: "POST", body: JSON.stringify(data) }),
   getBusinessRewards: () => req<Reward[]>("/rewards"),
   addPoints: (customerId: number, points: number) =>
     req<void>("/rewards/points", { method: "POST", body: JSON.stringify({ customerId, points }) }),
@@ -91,7 +91,7 @@ function RewardsManagerModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(""); const [success, setSuccess] = useState("");
-  const [form, setForm] = useState({ name: "", description: "", costPoints: 100 });
+  const [form, setForm] = useState({ name: "", description: "", pointsCost: 100, expiresAt: "" });
 
   useEffect(() => { if (isOpen) { setError(""); setSuccess(""); fetchRewards(); } }, [isOpen]);
 
@@ -102,7 +102,7 @@ function RewardsManagerModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm(p => ({ ...p, [name]: name === "costPoints" ? Math.max(1, Number(value)) : value }));
+    setForm(p => ({ ...p, [name]: name === "pointsCost" ? Math.max(1, Number(value)) : value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,7 +110,7 @@ function RewardsManagerModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
     try {
       await api.createReward(form);
       setSuccess(`Premio "${form.name}" creado correctamente.`);
-      setForm({ name: "", description: "", costPoints: 100 });
+      setForm({ name: "", description: "", pointsCost: 100, expiresAt: "" });
       fetchRewards();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) { setError(err.message || "Error al crear el premio."); }
@@ -143,7 +143,11 @@ function RewardsManagerModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <label style={{ fontSize: "13px", fontWeight: 600 }}>Precio en Puntos</label>
-              <input type="number" name="costPoints" value={form.costPoints} onChange={handleChange} min="1" required style={inputStyle} />
+              <input type="number" name="pointsCost" value={form.pointsCost} onChange={handleChange} min="1" required style={inputStyle} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "13px", fontWeight: 600 }}>Fecha de Validez</label>
+              <input type="date" name="expiresAt" value={form.expiresAt} onChange={handleChange} required style={inputStyle} />
             </div>
             <button type="submit" disabled={submitting} style={{ padding: "12px", borderRadius: "8px", border: "none", background: "var(--primary)", color: "black", fontWeight: 700, fontSize: "14px", cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? 0.7 : 1 }}>
               {submitting ? "Creando..." : "Crear Premio"}
@@ -162,8 +166,13 @@ function RewardsManagerModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                     <div style={{ flex: 1 }}>
                       <p style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700 }}>{r.name}</p>
                       <p style={{ margin: 0, fontSize: "12px", color: "var(--muted)", lineHeight: "1.4" }}>{r.description}</p>
+                      {(r as any).expiresAt && (
+                        <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#FF3B30", fontWeight: 600 }}>
+                          Válido hasta: {(r as any).expiresAt}
+                        </p>
+                      )}
                     </div>
-                    <span style={{ flexShrink: 0, background: "rgba(212,255,0,0.12)", color: "var(--primary)", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 }}>{r.costPoints} pts</span>
+                    <span style={{ flexShrink: 0, background: "rgba(212,255,0,0.12)", color: "var(--primary)", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 }}>{r.pointsCost} pts</span>
                   </div>
                 ))}
               </div>
@@ -297,7 +306,7 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
   const handleRedeem = async (r: Reward) => {
     const cur = pts?.points ?? 0;
-    if (cur < r.costPoints) { setError(`Te faltan ${r.costPoints - cur} puntos para canjear "${r.name}".`); setTimeout(() => setError(""), 4000); return; }
+    if (cur < r.pointsCost) { setError(`Te faltan ${r.pointsCost - cur} puntos para canjear "${r.name}".`); setTimeout(() => setError(""), 4000); return; }
     setRedeemingId(r.id); setError("");
     try {
       await api.redeemReward(r.id);
@@ -361,17 +370,17 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   {rewards.map(r => {
-                    const canAfford = cur >= r.costPoints;
+                    const canAfford = cur >= r.pointsCost;
                     const isRedeeming = redeemingId === r.id;
                     return (
                       <div key={r.id} style={{ padding: "16px", border: "1.5px solid var(--border)", borderRadius: "12px", background: "var(--surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", opacity: canAfford ? 1 : 0.75 }}>
                         <div style={{ flex: 1 }}>
                           <p style={{ margin: "0 0 4px", fontSize: "15px", fontWeight: 700 }}>{r.name}</p>
                           <p style={{ margin: "0 0 4px", fontSize: "12px", color: "var(--muted)", lineHeight: "1.4" }}>{r.description}</p>
-                          {!canAfford && <p style={{ margin: 0, fontSize: "11px", color: "#FF9500", fontWeight: 600 }}>Te faltan {r.costPoints - cur} puntos</p>}
+                          {!canAfford && <p style={{ margin: 0, fontSize: "11px", color: "#FF9500", fontWeight: 600 }}>Te faltan {r.pointsCost - cur} puntos</p>}
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
-                          <span style={{ background: canAfford ? "rgba(212,255,0,0.12)" : "var(--surface)", color: canAfford ? "var(--primary)" : "var(--muted)", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 }}>{r.costPoints} pts</span>
+                          <span style={{ background: canAfford ? "rgba(212,255,0,0.12)" : "var(--surface)", color: canAfford ? "var(--primary)" : "var(--muted)", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 }}>{r.pointsCost} pts</span>
                           <button onClick={() => handleRedeem(r)} disabled={!canAfford || isRedeeming} style={{ padding: "7px 14px", borderRadius: "7px", border: "none", background: canAfford ? "var(--primary)" : "var(--surface)", color: canAfford ? "black" : "var(--muted)", fontWeight: 700, fontSize: "12px", cursor: canAfford && !isRedeeming ? "pointer" : "not-allowed", opacity: isRedeeming ? 0.7 : 1, whiteSpace: "nowrap" }}>
                             {isRedeeming ? "Canjeando..." : canAfford ? "Canjear" : "Sin puntos"}
                           </button>
@@ -397,7 +406,7 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
                       <p style={{ margin: "0 0 4px", fontSize: "11px", color: "var(--muted)" }}>{new Date(rr.redeemedAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</p>
-                      {rr.reward?.costPoints && <span style={{ background: "rgba(212,255,0,0.1)", color: "var(--primary)", padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 800 }}>{rr.reward.costPoints} pts</span>}
+                      {rr.reward?.pointsCost && <span style={{ background: "rgba(212,255,0,0.1)", color: "var(--primary)", padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 800 }}>{rr.reward.pointsCost} pts</span>}
                     </div>
                   </div>
                 ))}

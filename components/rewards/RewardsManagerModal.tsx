@@ -20,6 +20,7 @@ export default function RewardsManagerModal({ isOpen, onClose }: RewardsManagerM
     name: "",
     description: "",
     costPoints: 100,
+    expiresAt: "",
   });
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function RewardsManagerModal({ isOpen, onClose }: RewardsManagerM
     try {
       await createReward(formData);
       setSuccess(`Premio "${formData.name}" creado correctamente.`);
-      setFormData({ name: "", description: "", costPoints: 100 });
+      setFormData({ name: "", description: "", costPoints: 100, expiresAt: "" });
       fetchRewards();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) {
@@ -153,6 +154,11 @@ export default function RewardsManagerModal({ isOpen, onClose }: RewardsManagerM
               <input type="number" name="costPoints" value={formData.costPoints} onChange={handleChange} min="1" required style={inputStyle} placeholder="100" />
             </div>
 
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "13px", fontWeight: 600 }}>Fecha de Validez</label>
+              <input type="date" name="expiresAt" value={formData.expiresAt || ""} onChange={handleChange} style={inputStyle} required />
+            </div>
+
             <button type="submit" disabled={isSubmitting} style={{
               padding: "12px", borderRadius: "8px", border: "none",
               background: "var(--primary)", color: "black", fontWeight: 700, fontSize: "14px",
@@ -187,6 +193,11 @@ export default function RewardsManagerModal({ isOpen, onClose }: RewardsManagerM
                     <div style={{ flex: 1 }}>
                       <p style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700 }}>{reward.name}</p>
                       <p style={{ margin: 0, fontSize: "12px", color: "var(--muted)", lineHeight: "1.4" }}>{reward.description}</p>
+                      {reward.expiresAt && (
+                        <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#FF3B30", fontWeight: 600 }}>
+                          Válido hasta: {reward.expiresAt}
+                        </p>
+                      )}
                     </div>
                     <span style={{
                       flexShrink: 0,
