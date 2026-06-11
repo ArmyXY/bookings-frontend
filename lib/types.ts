@@ -105,3 +105,28 @@ export type AuthResponse = {
   accessToken: string;
   user: AuthUser;
 };
+
+export type Reward = {
+  id: number;
+  name: string;
+  description: string;
+  costPoints: number;
+  businessId: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CustomerPoints = {
+  id: number;
+  customerId: number;
+  points: number;
+  updatedAt?: string;
+};
+
+export type RedeemedReward = {
+  id: number;
+  customerId: number;
+  rewardId: number;
+  redeemedAt: string;
+  reward?: Reward;
+};

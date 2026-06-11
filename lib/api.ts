@@ -9,6 +9,9 @@ import {
   PaymentStatus,
   AuthResponse,
   AuthUser,
+  Reward,
+  CustomerPoints,
+  RedeemedReward,
 } from "./types";
 
 export type BookingStatus = AppointmentStatus;
@@ -212,4 +215,48 @@ export function updateBusiness(
 
 export function deleteBusiness(id: number): Promise<void> {
   return request<void>(`/businesses/${id}`, { method: "DELETE" });
+}
+
+// --- Rewards API ---
+
+export interface CreateRewardDto {
+  name: string;
+  description: string;
+  costPoints: number;
+}
+
+export function createReward(data: CreateRewardDto): Promise<Reward> {
+  return request<Reward>("/rewards", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function addPoints(customerId: number, points: number): Promise<void> {
+  return request<void>("/rewards/points", {
+    method: "POST",
+    body: JSON.stringify({ customerId, points }),
+  });
+}
+
+export function getBusinessRewards(): Promise<Reward[]> {
+  return request<Reward[]>("/rewards");
+}
+
+export function getRewardsByBusiness(businessId: number): Promise<Reward[]> {
+  return request<Reward[]>(`/rewards/business/${businessId}`);
+}
+
+export function getCustomerPoints(): Promise<CustomerPoints> {
+  return request<CustomerPoints>("/rewards/points");
+}
+
+export function redeemReward(rewardId: number): Promise<RedeemedReward> {
+  return request<RedeemedReward>(`/rewards/${rewardId}/redeem`, {
+    method: "POST",
+  });
+}
+
+export function getMyRedeemedRewards(): Promise<RedeemedReward[]> {
+  return request<RedeemedReward[]>("/rewards/my-rewards");
 }
