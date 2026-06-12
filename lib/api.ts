@@ -235,14 +235,14 @@ export function createReward(data: CreateRewardDto): Promise<Reward> {
 }
 
 export function addPoints(customerId: number, points: number): Promise<void> {
-  return request<void>("/rewards/points", {
+  return request<void>("/rewards/business/points", {
     method: "POST",
     body: JSON.stringify({ customerId, points }),
   });
 }
 
 export function getBusinessRewards(): Promise<Reward[]> {
-  return request<Reward[]>("/rewards");
+  return request<Reward[]>("/rewards/business");
 }
 
 export function getRewardsByBusiness(businessId: number): Promise<Reward[]> {
@@ -254,11 +254,11 @@ export function getAllRewards(): Promise<Reward[]> {
 }
 
 export function getCustomerPoints(): Promise<CustomerPoints[]> {
-  return request<CustomerPoints[]>("/rewards/points");
+  return request<CustomerPoints[]>("/rewards/my-points");
 }
 
 export function redeemReward(rewardId: number): Promise<RedeemedReward> {
-  return request<RedeemedReward>(`/rewards/${rewardId}/redeem`, {
+  return request<RedeemedReward>(`/rewards/redeem/${rewardId}`, {
     method: "POST",
   });
 }

@@ -37,15 +37,15 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
 const api = {
   createReward: (data: { name: string; description: string; pointsCost: number; expiresAt: string }) =>
     req<Reward>("/rewards/business", { method: "POST", body: JSON.stringify(data) }),
-  getBusinessRewards: () => req<Reward[]>("/rewards"),
+  getBusinessRewards: () => req<Reward[]>("/rewards/business"),
   addPoints: (customerId: number, points: number) =>
-    req<void>("/rewards/points", { method: "POST", body: JSON.stringify({ customerId, points }) }),
+    req<void>("/rewards/business/points", { method: "POST", body: JSON.stringify({ customerId, points }) }),
   getCustomers: () => req<Customer[]>("/customers"),
   getBusinesses: () => req<{ id: number; name: string }[]>("/businesses"),
   getRewardsByBusiness: (id: number) => req<Reward[]>(`/rewards/business/${id}`),
   getAllRewards: () => req<Reward[]>("/rewards/all"),
-  getCustomerPoints: () => req<CustomerPoints[]>("/rewards/points"),
-  redeemReward: (id: number) => req<RedeemedReward>(`/rewards/${id}/redeem`, { method: "POST" }),
+  getCustomerPoints: () => req<CustomerPoints[]>("/rewards/my-points"),
+  redeemReward: (id: number) => req<RedeemedReward>(`/rewards/redeem/${id}`, { method: "POST" }),
   getMyRedeemedRewards: () => req<RedeemedReward[]>("/rewards/my-rewards"),
 };
 
