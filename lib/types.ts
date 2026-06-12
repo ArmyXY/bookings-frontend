@@ -111,8 +111,9 @@ export type Reward = {
   id: number;
   name: string;
   description: string;
-  costPoints: number;
+  pointsCost: number;
   businessId: number;
+  business?: Business;
   createdAt?: string;
   updatedAt?: string;
 };

@@ -11,8 +11,9 @@ import UserMenu from "./UserMenu";
 type Reward = {
   id: number; name: string; description: string;
   pointsCost: number; businessId: number;
+  business?: { name: string };
 };
-type CustomerPoints = { id: number; customerId: number; points: number };
+type CustomerPoints = { id: number; customerId: number; businessId: number; points: number };
 type RedeemedReward = { id: number; rewardId: number; redeemedAt: string; reward?: Reward };
 type Customer = { id: number; name: string; email: string };
 
@@ -42,7 +43,8 @@ const api = {
   getCustomers: () => req<Customer[]>("/customers"),
   getBusinesses: () => req<{ id: number; name: string }[]>("/businesses"),
   getRewardsByBusiness: (id: number) => req<Reward[]>(`/rewards/business/${id}`),
-  getCustomerPoints: () => req<CustomerPoints>("/rewards/points"),
+  getAllRewards: () => req<Reward[]>("/rewards/all"),
+  getCustomerPoints: () => req<CustomerPoints[]>("/rewards/points"),
   redeemReward: (id: number) => req<RedeemedReward>(`/rewards/${id}/redeem`, { method: "POST" }),
   getMyRedeemedRewards: () => req<RedeemedReward[]>("/rewards/my-rewards"),
 };
@@ -184,129 +186,37 @@ function RewardsManagerModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   );
 }
 
-// ─── Modal: Dar Puntos (Manager) ──────────────────────────────────────────────
-function GivePointsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [search, setSearch] = useState(""); const [points, setPoints] = useState(50);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filtered, setFiltered] = useState<Customer[]>([]);
-  const [selected, setSelected] = useState<Customer | null>(null);
-  const [showDrop, setShowDrop] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(""); const [success, setSuccess] = useState("");
-
-  useEffect(() => {
-    if (isOpen) { setError(""); setSuccess(""); setSearch(""); setSelected(null); setPoints(50); api.getCustomers().then(setCustomers).catch(() => {}); }
-  }, [isOpen]);
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value; setSearch(v); setSelected(null);
-    if (v.length > 0) { setFiltered(customers.filter(c => c.name.toLowerCase().includes(v.toLowerCase()) || c.email.toLowerCase().includes(v.toLowerCase())).slice(0, 6)); setShowDrop(true); }
-    else setShowDrop(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setError(""); setSuccess("");
-    if (!selected) { setError("Selecciona un cliente válido."); return; }
-    if (points <= 0) { setError("La cantidad de puntos debe ser mayor a 0."); return; }
-    setSubmitting(true);
-    try {
-      await api.addPoints(selected.id, points);
-      setSuccess(`✓ ${points} puntos asignados a ${selected.name} correctamente.`);
-      setSearch(""); setSelected(null); setPoints(50);
-      setTimeout(() => setSuccess(""), 5000);
-    } catch (err: any) { setError(err.message || "Error al asignar puntos."); }
-    finally { setSubmitting(false); }
-  };
-
-  if (!isOpen) return null;
-  return (
-    <Overlay onClose={onClose}>
-      <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xl)", width: "100%", maxWidth: "420px", display: "flex", flexDirection: "column", overflow: "visible", animation: "page-in 300ms var(--ease-out-expo)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: "1.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: "17px", fontWeight: 800 }}>Dar Puntos</h2>
-            <p style={{ margin: "2px 0 0", fontSize: "13px", color: "var(--muted)" }}>Asigna puntos de fidelidad a un cliente</p>
-          </div>
-          <CloseBtn onClose={onClose} />
-        </div>
-        <div style={{ padding: "24px" }}>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {error && <Alert msg={error} type="error" />}
-            {success && <Alert msg={success} type="success" />}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "13px", fontWeight: 600 }}>Cliente</label>
-              <div style={{ position: "relative" }}>
-                <input type="text" value={search} onChange={handleSearch} onFocus={() => search && setShowDrop(true)} placeholder="Busca por nombre o email..." style={inputStyle} />
-                {showDrop && filtered.length > 0 && (
-                  <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "10px", boxShadow: "var(--shadow-lg)", zIndex: 100, overflow: "hidden" }}>
-                    {filtered.map(c => (
-                      <div key={c.id} onClick={() => { setSelected(c); setSearch(c.name); setShowDrop(false); }}
-                        style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid var(--border)" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                        <p style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>{c.name}</p>
-                        <p style={{ margin: 0, fontSize: "12px", color: "var(--muted)" }}>{c.email}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {selected && <p style={{ margin: 0, fontSize: "12px", color: "var(--primary)", fontWeight: 600 }}>✓ {selected.name} · {selected.email}</p>}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "13px", fontWeight: 600 }}>Cantidad de Puntos</label>
-              <input type="number" value={points} onChange={e => setPoints(Math.max(1, Number(e.target.value)))} min="1" required style={inputStyle} />
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              {[10, 25, 50, 100].map(v => (
-                <button key={v} type="button" onClick={() => setPoints(v)} style={{ flex: 1, padding: "6px", borderRadius: "6px", border: points === v ? "1.5px solid var(--primary)" : "1.5px solid var(--border)", background: points === v ? "rgba(212,255,0,0.1)" : "var(--surface-2)", color: points === v ? "var(--primary)" : "var(--text)", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}>+{v}</button>
-              ))}
-            </div>
-            <button type="submit" disabled={submitting || !selected} style={{ padding: "12px", borderRadius: "8px", border: "none", background: "var(--primary)", color: "black", fontWeight: 700, fontSize: "14px", cursor: submitting || !selected ? "not-allowed" : "pointer", opacity: submitting || !selected ? 0.6 : 1 }}>
-              {submitting ? "Asignando..." : `Asignar ${points} Puntos`}
-            </button>
-          </form>
-        </div>
-      </div>
-    </Overlay>
-  );
-}
-
 // ─── Modal: Mis Recompensas (Cliente) ─────────────────────────────────────────
 function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [pts, setPts] = useState<CustomerPoints | null>(null);
-  const [businesses, setBusinesses] = useState<{ id: number; name: string }[]>([]);
-  const [bizId, setBizId] = useState("");
+  const [pts, setPts] = useState<CustomerPoints[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [history, setHistory] = useState<RedeemedReward[]>([]);
   const [loadingPts, setLoadingPts] = useState(false);
   const [loadingRew, setLoadingRew] = useState(false);
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
   const [tab, setTab] = useState<"available" | "history">("available");
+  const [sortBy, setSortBy] = useState<"pointsAsc" | "pointsDesc" | "business">("pointsAsc");
   const [error, setError] = useState(""); const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    if (isOpen) { setError(""); setSuccess(""); setBizId(""); setRewards([]); setTab("available"); fetchAll(); }
+    if (isOpen) { setError(""); setSuccess(""); setTab("available"); fetchAll(); }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (bizId) { setLoadingRew(true); api.getRewardsByBusiness(Number(bizId)).then(setRewards).catch(() => setRewards([])).finally(() => setLoadingRew(false)); }
-    else setRewards([]);
-  }, [bizId]);
 
   const fetchAll = async () => {
     setLoadingPts(true);
+    setLoadingRew(true);
     await Promise.all([
-      api.getCustomerPoints().then(setPts).catch(() => setPts(null)),
-      api.getBusinesses().then(setBusinesses).catch(() => {}),
+      api.getCustomerPoints().then(setPts).catch(() => setPts([])),
+      api.getAllRewards().then(setRewards).catch(() => setRewards([])),
       api.getMyRedeemedRewards().then(setHistory).catch(() => {}),
     ]);
     setLoadingPts(false);
+    setLoadingRew(false);
   };
 
   const handleRedeem = async (r: Reward) => {
-    const cur = pts?.points ?? 0;
-    if (cur < r.pointsCost) { setError(`Te faltan ${r.pointsCost - cur} puntos para canjear "${r.name}".`); setTimeout(() => setError(""), 4000); return; }
+    const bizPts = pts.find(p => p.businessId === r.businessId)?.points ?? 0;
+    if (bizPts < r.pointsCost) { setError(`Te faltan ${r.pointsCost - bizPts} puntos en ${r.business?.name} para canjear "${r.name}".`); setTimeout(() => setError(""), 4000); return; }
     setRedeemingId(r.id); setError("");
     try {
       await api.redeemReward(r.id);
@@ -318,15 +228,26 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     finally { setRedeemingId(null); }
   };
 
-  const cur = pts?.points ?? 0;
+  const totalCur = pts.reduce((sum, p) => sum + p.points, 0);
   const tabBtn = (t: "available" | "history", label: string) => (
     <button onClick={() => setTab(t)} style={{ flex: 1, padding: "12px 8px", background: tab === t ? "rgba(212,255,0,0.07)" : "transparent", border: "none", borderBottom: tab === t ? "2px solid var(--primary)" : "2px solid transparent", color: tab === t ? "var(--text)" : "var(--muted)", fontWeight: 700, fontSize: "13px", cursor: "pointer", transition: "all 0.2s ease" }}>{label}</button>
   );
 
+  const sortedRewards = [...rewards].sort((a, b) => {
+    if (sortBy === "pointsAsc") return a.pointsCost - b.pointsCost;
+    if (sortBy === "pointsDesc") return b.pointsCost - a.pointsCost;
+    if (sortBy === "business") {
+      const nameA = a.business?.name || "";
+      const nameB = b.business?.name || "";
+      return nameA.localeCompare(nameB);
+    }
+    return 0;
+  });
+
   if (!isOpen) return null;
   return (
     <Overlay onClose={onClose}>
-      <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xl)", width: "100%", maxWidth: "560px", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", animation: "page-in 300ms var(--ease-out-expo)" }}>
+      <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xl)", width: "100%", maxWidth: "700px", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", animation: "page-in 300ms var(--ease-out-expo)" }}>
         {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: "1.5px solid var(--border)", background: "rgba(212,255,0,0.03)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
@@ -336,7 +257,7 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "var(--surface-2)", border: "1.5px solid var(--primary)", padding: "8px 14px", borderRadius: "24px" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v12" /><path d="M15 9.5a3 3 0 0 0-6 0c0 3 6 3 6 6a3 3 0 0 1-6 0" /></svg>
-              <span style={{ fontSize: "15px", fontWeight: 800 }}>{loadingPts ? "..." : cur}<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", marginLeft: "3px" }}>pts</span></span>
+              <span style={{ fontSize: "15px", fontWeight: 800 }}>{loadingPts ? "..." : totalCur}<span style={{ fontSize: "11px", fontWeight: 600, color: "var(--muted)", marginLeft: "3px" }}>pts globales</span></span>
             </div>
             <CloseBtn onClose={onClose} />
           </div>
@@ -349,40 +270,42 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         {/* Alerts */}
         {(error || success) && <div style={{ padding: "12px 24px 0" }}>{error && <Alert msg={error} type="error" />}{success && <Alert msg={success} type="success" />}</div>}
         {/* Body */}
-        <div style={{ overflowY: "auto", padding: "24px", flex: 1 }}>
+        <div style={{ overflowY: "auto", padding: "24px", flex: 1, display: "flex", flexDirection: "column" }}>
           {tab === "available" ? (
             <>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "20px" }}>
-                <label style={{ fontSize: "13px", fontWeight: 600 }}>Selecciona un comercio</label>
-                <select value={bizId} onChange={e => setBizId(e.target.value)} style={{ ...inputStyle, fontWeight: 600 }}>
-                  <option value="">— Elige un comercio —</option>
-                  {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-              {!bizId ? (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)", border: "1.5px dashed var(--border)", borderRadius: "12px" }}>
-                  <p style={{ margin: 0, fontSize: "14px" }}>Selecciona un comercio para ver sus premios.</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 700 }}>Todos los premios</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <label style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>Ordenar por:</label>
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} style={{ ...inputStyle, padding: "6px 10px", width: "auto", fontSize: "12px", fontWeight: 600 }}>
+                    <option value="pointsAsc">Menos puntos primero</option>
+                    <option value="pointsDesc">Más puntos primero</option>
+                    <option value="business">Nombre del negocio</option>
+                  </select>
                 </div>
-              ) : loadingRew ? <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "13px" }}>Cargando premios...</p> : rewards.length === 0 ? (
+              </div>
+              {loadingRew ? <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "13px" }}>Cargando premios...</p> : sortedRewards.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 20px", color: "var(--muted)", border: "1.5px dashed var(--border)", borderRadius: "12px" }}>
-                  <p style={{ margin: 0, fontSize: "14px" }}>Este comercio no tiene premios disponibles.</p>
+                  <p style={{ margin: 0, fontSize: "14px" }}>No hay premios disponibles en este momento.</p>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  {rewards.map(r => {
-                    const canAfford = cur >= r.pointsCost;
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+                  {sortedRewards.map(r => {
+                    const bizPts = pts.find(p => p.businessId === r.businessId)?.points ?? 0;
+                    const canAfford = bizPts >= r.pointsCost;
                     const isRedeeming = redeemingId === r.id;
                     return (
-                      <div key={r.id} style={{ padding: "16px", border: "1.5px solid var(--border)", borderRadius: "12px", background: "var(--surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", opacity: canAfford ? 1 : 0.75 }}>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ margin: "0 0 4px", fontSize: "15px", fontWeight: 700 }}>{r.name}</p>
-                          <p style={{ margin: "0 0 4px", fontSize: "12px", color: "var(--muted)", lineHeight: "1.4" }}>{r.description}</p>
-                          {!canAfford && <p style={{ margin: 0, fontSize: "11px", color: "#FF9500", fontWeight: 600 }}>Te faltan {r.pointsCost - cur} puntos</p>}
+                      <div key={r.id} style={{ padding: "16px", border: "1.5px solid var(--border)", borderRadius: "12px", background: "var(--surface-2)", display: "flex", flexDirection: "column", gap: "12px", opacity: canAfford ? 1 : 0.75, position: "relative", overflow: "hidden" }}>
+                        {!canAfford && <div style={{ position: "absolute", top: 0, right: 0, background: "rgba(255,59,48,0.1)", color: "#FF3B30", padding: "4px 8px", borderBottomLeftRadius: "8px", fontSize: "10px", fontWeight: 800 }}>FALTAN {r.pointsCost - bizPts} PTS AQUÍ</div>}
+                        <div>
+                          <p style={{ margin: "0 0 2px", fontSize: "11px", color: "var(--primary)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em" }}>{r.business?.name ?? "Negocio"}</p>
+                          <p style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 800, lineHeight: "1.2" }}>{r.name}</p>
+                          <p style={{ margin: 0, fontSize: "13px", color: "var(--muted)", lineHeight: "1.4", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.description}</p>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
-                          <span style={{ background: canAfford ? "rgba(212,255,0,0.12)" : "var(--surface)", color: canAfford ? "var(--primary)" : "var(--muted)", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 }}>{r.pointsCost} pts</span>
-                          <button onClick={() => handleRedeem(r)} disabled={!canAfford || isRedeeming} style={{ padding: "7px 14px", borderRadius: "7px", border: "none", background: canAfford ? "var(--primary)" : "var(--surface)", color: canAfford ? "black" : "var(--muted)", fontWeight: 700, fontSize: "12px", cursor: canAfford && !isRedeeming ? "pointer" : "not-allowed", opacity: isRedeeming ? 0.7 : 1, whiteSpace: "nowrap" }}>
-                            {isRedeeming ? "Canjeando..." : canAfford ? "Canjear" : "Sin puntos"}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
+                          <span style={{ background: canAfford ? "rgba(212,255,0,0.12)" : "var(--surface)", color: canAfford ? "var(--primary)" : "var(--muted)", padding: "4px 10px", borderRadius: "20px", fontSize: "13px", fontWeight: 800 }}>{r.pointsCost} pts</span>
+                          <button onClick={() => handleRedeem(r)} disabled={!canAfford || isRedeeming} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: canAfford ? "var(--primary)" : "var(--surface)", color: canAfford ? "black" : "var(--muted)", fontWeight: 700, fontSize: "13px", cursor: canAfford && !isRedeeming ? "pointer" : "not-allowed", opacity: isRedeeming ? 0.7 : 1 }}>
+                            {isRedeeming ? "Canjeando..." : canAfford ? "Canjear" : "Bloqueado"}
                           </button>
                         </div>
                       </div>
@@ -401,12 +324,13 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 {history.map(rr => (
                   <div key={rr.id} style={{ padding: "14px 16px", border: "1.5px solid var(--border)", borderRadius: "10px", background: "var(--surface-2)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
-                      <p style={{ margin: "0 0 2px", fontSize: "14px", fontWeight: 700 }}>{rr.reward?.name ?? "Premio"}</p>
-                      {rr.reward?.description && <p style={{ margin: 0, fontSize: "12px", color: "var(--muted)", lineHeight: "1.4" }}>{rr.reward.description}</p>}
+                      <p style={{ margin: "0 0 2px", fontSize: "11px", color: "var(--primary)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em" }}>{rr.reward?.business?.name ?? "Negocio"}</p>
+                      <p style={{ margin: "0 0 4px", fontSize: "15px", fontWeight: 800 }}>{rr.reward?.name ?? "Premio"}</p>
+                      {rr.reward?.description && <p style={{ margin: 0, fontSize: "13px", color: "var(--muted)", lineHeight: "1.4" }}>{rr.reward.description}</p>}
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
-                      <p style={{ margin: "0 0 4px", fontSize: "11px", color: "var(--muted)" }}>{new Date(rr.redeemedAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</p>
-                      {rr.reward?.pointsCost && <span style={{ background: "rgba(212,255,0,0.1)", color: "var(--primary)", padding: "2px 8px", borderRadius: "20px", fontSize: "11px", fontWeight: 800 }}>{rr.reward.pointsCost} pts</span>}
+                      <p style={{ margin: "0 0 4px", fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>{new Date(rr.redeemedAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                      {rr.reward?.pointsCost && <span style={{ background: "rgba(212,255,0,0.1)", color: "var(--primary)", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 800 }}>{rr.reward.pointsCost} pts</span>}
                     </div>
                   </div>
                 ))}
@@ -425,7 +349,6 @@ export default function Header() {
   const { user } = useAuth();
 
   const [rewardsManagerOpen, setRewardsManagerOpen] = useState(false);
-  const [givePointsOpen, setGivePointsOpen] = useState(false);
   const [clientRewardsOpen, setClientRewardsOpen] = useState(false);
 
   const isAdmin = user?.role === "admin";
@@ -467,20 +390,11 @@ export default function Header() {
 
           {/* Manager buttons */}
           {isBusiness && (
-            <>
-              <button onClick={() => setRewardsManagerOpen(true)} className="theme-toggle-btn" style={btnStyle} title="Crear Premios" aria-label="Crear Premios">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </button>
-              <button onClick={() => setGivePointsOpen(true)} className="theme-toggle-btn" style={btnStyle} title="Dar Puntos" aria-label="Dar Puntos">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v12" />
-                  <path d="M15 9.5a3 3 0 0 0-6 0c0 3 6 3 6 6a3 3 0 0 1-6 0" />
-                </svg>
-              </button>
-            </>
+            <button onClick={() => setRewardsManagerOpen(true)} className="theme-toggle-btn" style={btnStyle} title="Crear Premios" aria-label="Crear Premios">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
           )}
 
           {/* Client button */}
@@ -522,7 +436,6 @@ export default function Header() {
 
       {/* Modals */}
       <RewardsManagerModal isOpen={rewardsManagerOpen} onClose={() => setRewardsManagerOpen(false)} />
-      <GivePointsModal isOpen={givePointsOpen} onClose={() => setGivePointsOpen(false)} />
       <ClientRewardsModal isOpen={clientRewardsOpen} onClose={() => setClientRewardsOpen(false)} />
     </>
   );

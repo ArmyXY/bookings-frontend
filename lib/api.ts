@@ -249,8 +249,12 @@ export function getRewardsByBusiness(businessId: number): Promise<Reward[]> {
   return request<Reward[]>(`/rewards/business/${businessId}`);
 }
 
-export function getCustomerPoints(): Promise<CustomerPoints> {
-  return request<CustomerPoints>("/rewards/points");
+export function getAllRewards(): Promise<Reward[]> {
+  return request<Reward[]>("/rewards/all");
+}
+
+export function getCustomerPoints(): Promise<CustomerPoints[]> {
+  return request<CustomerPoints[]>("/rewards/points");
 }
 
 export function redeemReward(rewardId: number): Promise<RedeemedReward> {
