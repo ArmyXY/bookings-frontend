@@ -301,6 +301,11 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           <p style={{ margin: "0 0 2px", fontSize: "11px", color: "var(--primary)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em" }}>{r.business?.name ?? "Negocio"}</p>
                           <p style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 800, lineHeight: "1.2" }}>{r.name}</p>
                           <p style={{ margin: 0, fontSize: "13px", color: "var(--muted)", lineHeight: "1.4", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.description}</p>
+                          {(r as any).expiresAt && (
+                            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#FF3B30", fontWeight: 600 }}>
+                              Válido hasta: {new Date((r as any).expiresAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                            </p>
+                          )}
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
                           <span style={{ background: canAfford ? "rgba(212,255,0,0.12)" : "var(--surface)", color: canAfford ? "var(--primary)" : "var(--muted)", padding: "4px 10px", borderRadius: "20px", fontSize: "13px", fontWeight: 800 }}>{r.pointsCost} pts</span>
@@ -327,6 +332,11 @@ function ClientRewardsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       <p style={{ margin: "0 0 2px", fontSize: "11px", color: "var(--primary)", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em" }}>{rr.reward?.business?.name ?? "Negocio"}</p>
                       <p style={{ margin: "0 0 4px", fontSize: "15px", fontWeight: 800 }}>{rr.reward?.name ?? "Premio"}</p>
                       {rr.reward?.description && <p style={{ margin: 0, fontSize: "13px", color: "var(--muted)", lineHeight: "1.4" }}>{rr.reward.description}</p>}
+                      {(rr.reward as any)?.expiresAt && (
+                        <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#FF3B30", fontWeight: 600 }}>
+                          Válido hasta: {new Date((rr.reward as any).expiresAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      )}
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
                       <p style={{ margin: "0 0 4px", fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>{new Date(rr.redeemedAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}</p>

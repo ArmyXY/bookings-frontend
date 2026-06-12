@@ -13,7 +13,8 @@ interface BusinessCalendarProps {
 
 export default function BusinessCalendar({ business, appointments, onClose }: BusinessCalendarProps) {
   const [viewDate, setViewDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState<{ day: number; date: string; appointments: Appointment[] } | null>(null);
+  const [selectedDays, setSelectedDays] = useState<{ day: number; date: string; appointments: Appointment[] }[]>([]);
+  const [isMultiSelect, setIsMultiSelect] = useState(false);
 
   const backdropRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -115,7 +116,7 @@ export default function BusinessCalendar({ business, appointments, onClose }: Bu
 
   const changeMonth = (offset: number) => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1));
-    setSelectedDay(null);
+    setSelectedDays([]);
   };
 
   const monthNames = [
@@ -233,16 +234,29 @@ export default function BusinessCalendar({ business, appointments, onClose }: Bu
                 {monthData.map((d, i) => {
                   const full = d.appointments ? isFull(d.appointments) : false;
                   const hasApts = d.appointments && d.appointments.length > 0;
-                  const active = selectedDay?.day === d.day;
+                  const active = d.date ? selectedDays.some(sd => sd.date === d.date) : false;
                   const isDayToday = isToday(d.day);
 
                   return (
                     <div
                       key={i}
-                      onClick={() =>
-                        d.day &&
-                        setSelectedDay({ day: d.day, date: d.date!, appointments: d.appointments || [] })
-                      }
+                      onClick={() => {
+                        if (d.day && d.date) {
+                          const dayObj = { day: d.day, date: d.date, appointments: d.appointments || [] };
+                          if (isMultiSelect) {
+                            setSelectedDays(prev => {
+                              const exists = prev.find(p => p.date === dayObj.date);
+                              if (exists) {
+                                return prev.filter(p => p.date !== dayObj.date);
+                              } else {
+                                return [...prev, dayObj];
+                              }
+                            });
+                          } else {
+                            setSelectedDays([dayObj]);
+                          }
+                        }
+                      }}
                       className={d.day ? "calendar-day-node" : ""}
                       style={{
                         aspectRatio: "1/1",
@@ -319,25 +333,67 @@ export default function BusinessCalendar({ business, appointments, onClose }: Bu
               }}
             >
               <div style={{ marginBottom: "32px" }}>
-                <h4 style={{ margin: "0 0 8px", fontSize: "20px", fontWeight: 800 }}>
-                  {selectedDay ? `Día ${selectedDay.day}` : "Actividad"}
-                </h4>
-                <p style={{ margin: 0, color: "var(--muted)", fontSize: "14px", fontWeight: 500 }}>
-                  {selectedDay
-                    ? `${monthNames[viewDate.getMonth()]} ${viewDate.getFullYear()}`
-                    : "Selecciona una fecha para ver los detalles"}
-                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                  <div>
+                    <h4 style={{ margin: "0 0 8px", fontSize: "20px", fontWeight: 800 }}>
+                      {selectedDays.length > 0
+                        ? selectedDays.length === 1
+                          ? `Día ${selectedDays[0].day}`
+                          : `${selectedDays.length} días`
+                        : "Actividad"}
+                    </h4>
+                    <p style={{ margin: 0, color: "var(--muted)", fontSize: "14px", fontWeight: 500 }}>
+                      {selectedDays.length > 0
+                        ? `${monthNames[viewDate.getMonth()]} ${viewDate.getFullYear()}`
+                        : "Selecciona una fecha para ver"}
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setIsMultiSelect(!isMultiSelect);
+                      if (isMultiSelect && selectedDays.length > 1) {
+                        setSelectedDays([selectedDays[0]]);
+                      }
+                    }}
+                    style={{
+                      background: isMultiSelect ? "var(--primary)" : "var(--surface)",
+                      color: isMultiSelect ? "var(--primary-text)" : "var(--text)",
+                      border: "2px solid",
+                      borderColor: isMultiSelect ? "var(--primary)" : "var(--border)",
+                      padding: "8px 12px",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                    title="Selección múltiple"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      {isMultiSelect && <path d="M9 12l2 2 4-4"></path>}
+                    </svg>
+                    Múltiple
+                  </button>
+                </div>
               </div>
 
               <div style={{ flex: 1, overflowY: "auto", paddingRight: "8px" }} className="custom-scrollbar">
-                {selectedDay && selectedDay.appointments.length > 0 ? (
+                {selectedDays.length > 0 && selectedDays.some(sd => sd.appointments.length > 0) ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    {selectedDay.appointments
-                      .slice()
-                      .sort((a, b) => a.time.localeCompare(b.time))
+                    {selectedDays
+                      .flatMap(sd => sd.appointments.map(apt => ({ ...apt, _date: sd.date, _day: sd.day })))
+                      .sort((a, b) => {
+                        if (a._date !== b._date) return a._date.localeCompare(b._date);
+                        return a.time.localeCompare(b.time);
+                      })
                       .map((apt) => (
                         <div
-                          key={apt.id}
+                          key={`${apt.id}-${apt._date}`}
                           style={{
                             padding: "20px",
                             background: "var(--surface)",
@@ -349,18 +405,32 @@ export default function BusinessCalendar({ business, appointments, onClose }: Bu
                           onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                fontWeight: 800,
-                                color: "var(--primary-text)",
-                                background: "var(--primary)",
-                                padding: "4px 10px",
-                                borderRadius: "100px",
-                              }}
-                            >
-                              {apt.time}
-                            </span>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                              {selectedDays.length > 1 && (
+                                <span style={{
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  color: "var(--muted)",
+                                  background: "var(--surface-2)",
+                                  padding: "4px 8px",
+                                  borderRadius: "100px",
+                                }}>
+                                  Día {apt._day}
+                                </span>
+                              )}
+                              <span
+                                style={{
+                                  fontSize: "12px",
+                                  fontWeight: 800,
+                                  color: "var(--primary-text)",
+                                  background: "var(--primary)",
+                                  padding: "4px 10px",
+                                  borderRadius: "100px",
+                                }}
+                              >
+                                {apt.time}
+                              </span>
+                            </div>
                             <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted-2)", textTransform: "uppercase" }}>
                               #{apt.id}
                             </span>
@@ -372,10 +442,10 @@ export default function BusinessCalendar({ business, appointments, onClose }: Bu
                         </div>
                       ))}
                   </div>
-                ) : selectedDay ? (
+                ) : selectedDays.length > 0 ? (
                   <div style={{ textAlign: "center", marginTop: "60px", padding: "20px" }}>
                     <div style={{ fontSize: "40px", marginBottom: "16px", opacity: 0.2 }}>📅</div>
-                    <p style={{ color: "var(--muted)", fontWeight: 600 }}>No hay citas programadas para este día.</p>
+                    <p style={{ color: "var(--muted)", fontWeight: 600 }}>No hay citas programadas en los días seleccionados.</p>
                   </div>
                 ) : (
                   <div style={{ textAlign: "center", marginTop: "60px", padding: "20px" }}>
@@ -386,7 +456,7 @@ export default function BusinessCalendar({ business, appointments, onClose }: Bu
               </div>
 
               <div style={{ marginTop: "32px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                {selectedDay && isFull(selectedDay.appointments) && (
+                {selectedDays.length > 0 && selectedDays.some(sd => isFull(sd.appointments)) && (
                   <div
                     style={{
                       background: "#FFEBE9",
@@ -401,7 +471,7 @@ export default function BusinessCalendar({ business, appointments, onClose }: Bu
                     }}
                   >
                     <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#D73A49" }} />
-                    Día completo (Capacidad máxima)
+                    {selectedDays.length > 1 ? "Hay días completos" : "Día completo (Capacidad máxima)"}
                   </div>
                 )}
                 <button

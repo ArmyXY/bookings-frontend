@@ -201,7 +201,8 @@ export default function BookingsClient({
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [businessActionId, setBusinessActionId] = useState<number | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<number | null>(null);
-  const [businessSelectedDate, setBusinessSelectedDate] = useState<string | null>(null);
+  const [businessSelectedDates, setBusinessSelectedDates] = useState<string[]>([]);
+  const [isBusinessMultiSelect, setIsBusinessMultiSelect] = useState(false);
   const [businessScheduleForm, setBusinessScheduleForm] = useState({
     openingTime: "09:00",
     closingTime: "20:00",
@@ -556,18 +557,18 @@ export default function BookingsClient({
 
   const businessSelectedDateBookings = useMemo(
     () => {
-      const targetDate = businessSelectedDate || getTodayValue();
+      const targetDates = businessSelectedDates.length > 0 ? businessSelectedDates : [getTodayValue()];
       return visibleBookings.filter((booking) =>
-        booking.date.startsWith(targetDate)
+        targetDates.some(d => booking.date.startsWith(d))
       );
     },
-    [businessSelectedDate, visibleBookings]
+    [businessSelectedDates, visibleBookings]
   );
 
   const businessDisplayBookings = useMemo(() => {
     let list = filteredBookings;
     if (isBusiness) {
-      const tableBookings = businessSelectedDate ? businessSelectedDateBookings : visibleBookings;
+      const tableBookings = businessSelectedDates.length > 0 ? businessSelectedDateBookings : visibleBookings;
       list = statusFilter === "all" ? tableBookings : tableBookings.filter((booking) => booking.status === statusFilter);
     }
     return list.map((booking) => ({
@@ -575,7 +576,7 @@ export default function BookingsClient({
       customerName: getCustomerName(booking),
       paymentMethodName: getPaymentMethodLabel(booking),
     }));
-  }, [businessSelectedDate, businessSelectedDateBookings, filteredBookings, isBusiness, statusFilter, visibleBookings]);
+  }, [businessSelectedDates, businessSelectedDateBookings, filteredBookings, isBusiness, statusFilter, visibleBookings]);
 
   const { requestSort: requestBookingSort, sortedData: sortedBookings, renderSortIcon: renderBookingSortIcon } = useTableSort(businessDisplayBookings, 'date', 'desc');
 
@@ -597,8 +598,8 @@ export default function BookingsClient({
   }, [businessSelectedDateBookings, currentBusiness]);
 
   const businessMonthDays = useMemo(
-    () => getMonthCalendarCells(businessSelectedDate || getTodayValue()),
-    [businessSelectedDate]
+    () => getMonthCalendarCells(businessSelectedDates.length > 0 ? businessSelectedDates[businessSelectedDates.length - 1] : getTodayValue()),
+    [businessSelectedDates]
   );
 
   const totalSpent = useMemo(() => {
@@ -753,13 +754,23 @@ export default function BookingsClient({
     setDeleteTargetId(null);
   }
 
-  function selectBusinessCalendarDate(date: string) {
-    setBusinessSelectedDate(date);
+  function selectBusinessCalendarDate(date: string | null) {
+    if (date === null) {
+      setBusinessSelectedDates([]);
+      return;
+    }
+    setBusinessSelectedDates(prev => {
+      if (isBusinessMultiSelect) {
+        if (prev.includes(date)) return prev.filter(d => d !== date);
+        return [...prev, date];
+      }
+      return [date];
+    });
     setCreateForm((prev) => ({ ...prev, date, time: "" }));
   }
 
   function changeBusinessMonth(amount: number) {
-    const nextDate = moveMonth(businessSelectedDate || getTodayValue(), amount);
+    const nextDate = moveMonth(businessSelectedDates.length > 0 ? businessSelectedDates[businessSelectedDates.length - 1] : getTodayValue(), amount);
     selectBusinessCalendarDate(nextDate);
   }
 
@@ -2184,17 +2195,27 @@ export default function BookingsClient({
               <p className="business-panel-copy">Selecciona un dia para ver sus reservas.</p>
             </div>
             <div className="business-calendar-actions">
-              <button type="button" className="business-month-btn" onClick={() => changeBusinessMonth(-1)} title="Mes anterior">
-                ‹
-              </button>
-              <input
-                className="input business-date-input"
-                type="date"
-                value={businessSelectedDate || ""}
-                onChange={(e) => selectBusinessCalendarDate(e.target.value)}
-              />
-              <button type="button" className="business-month-btn" onClick={() => changeBusinessMonth(1)} title="Mes siguiente">
-                ›
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => {
+                  setIsBusinessMultiSelect(!isBusinessMultiSelect);
+                  if (isBusinessMultiSelect && businessSelectedDates.length > 1) {
+                    setBusinessSelectedDates([businessSelectedDates[0]]);
+                  }
+                }}
+                style={{
+                  background: isBusinessMultiSelect ? "var(--primary)" : "var(--surface)",
+                  color: isBusinessMultiSelect ? "var(--primary-text)" : "var(--text)",
+                  border: "2px solid",
+                  borderColor: isBusinessMultiSelect ? "var(--primary)" : "var(--border)",
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  marginRight: "8px"
+                }}
+              >
+                {isBusinessMultiSelect ? "✓ Múltiple" : "Múltiple"}
               </button>
             </div>
           </div>
@@ -2209,7 +2230,7 @@ export default function BookingsClient({
                 }
 
                 const dayBookings = visibleBookings.filter((booking) => booking.date.startsWith(date));
-                const isSelected = date === (businessSelectedDate || getTodayValue());
+                const isSelected = businessSelectedDates.length > 0 ? businessSelectedDates.includes(date) : date === getTodayValue();
                 const hasBookings = dayBookings.length > 0;
                 const allSlotsBooked = currentBusiness ? dayBookings.length >= buildHourlySlots(currentBusiness).length : false;
 
@@ -2229,7 +2250,7 @@ export default function BookingsClient({
             </div>
             <div className="business-month-switcher">
               <span>Mes seleccionado</span>
-              <strong>{formatMonthLabel(businessSelectedDate || getTodayValue())}</strong>
+              <strong>{formatMonthLabel(businessSelectedDates.length > 0 ? businessSelectedDates[businessSelectedDates.length - 1] : getTodayValue())}</strong>
               <div className="business-month-controls">
                 <button type="button" className="business-month-btn" onClick={() => changeBusinessMonth(-1)} title="Mes anterior">
                   {"<"}
@@ -2241,56 +2262,58 @@ export default function BookingsClient({
               <input
                 className="input business-date-input"
                 type="date"
-                value={businessSelectedDate || ""}
-                onChange={(e) => selectBusinessCalendarDate(e.target.value)}
+                value={businessSelectedDates.length > 0 ? businessSelectedDates[businessSelectedDates.length - 1] : ""}
+                onChange={(e) => selectBusinessCalendarDate(e.target.value || null)}
               />
             </div>
             <div className="business-slots-panel">
-              <h4>{formatShortDay(businessSelectedDate || getTodayValue())}</h4>
+              <h4>{businessSelectedDates.length > 1 ? `${businessSelectedDates.length} días seleccionados` : formatShortDay(businessSelectedDates.length > 0 ? businessSelectedDates[0] : getTodayValue())}</h4>
               <div className="business-day-summary">
                 <span>{businessSelectedDateBookings.length} reservas</span>
-                <span>{businessSlots.filter((slot) => !slot.isBooked).length} horas libres</span>
+                {businessSelectedDates.length <= 1 && <span>{businessSlots.filter((slot) => !slot.isBooked).length} horas libres</span>}
                 <span>{currentBusiness?.openingTime} - {currentBusiness?.closingTime}</span>
               </div>
-              <div className="business-slot-grid">
-                {businessSlots.map((slot) => (
-                  <button
-                    key={slot.value}
-                    type="button"
-                    className={`business-slot ${slot.isBooked ? "business-slot--booked" : ""} ${createForm.time === slot.value ? "business-slot--active" : ""}`}
-                    disabled={slot.isBooked}
-                    onClick={() => {
-                      setCreateForm((prev) => ({
-                        ...prev,
-                        date: businessSelectedDate || getTodayValue(),
-                        time: slot.value,
-                        businessId: user?.businessId ?? prev.businessId,
-                      }));
-                      setIsCreateOpen(true);
-                    }}
-                  >
-                    <strong>{slot.value}</strong>
-                    <span>{slot.isBooked ? getCustomerName(slot.booking as Booking) : "Libre"}</span>
-                  </button>
-                ))}
-              </div>
+              {businessSelectedDates.length <= 1 && (
+                <div className="business-slot-grid">
+                  {businessSlots.map((slot) => (
+                    <button
+                      key={slot.value}
+                      type="button"
+                      className={`business-slot ${slot.isBooked ? "business-slot--booked" : ""} ${createForm.time === slot.value ? "business-slot--active" : ""}`}
+                      disabled={slot.isBooked}
+                      onClick={() => {
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          date: businessSelectedDates.length > 0 ? businessSelectedDates[0] : getTodayValue(),
+                          time: slot.value,
+                          businessId: user?.businessId ?? prev.businessId,
+                        }));
+                        setIsCreateOpen(true);
+                      }}
+                    >
+                      <strong>{slot.value}</strong>
+                      <span>{slot.isBooked ? getCustomerName(slot.booking as Booking) : "Libre"}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="business-day-bookings">
-                <h5>Reservas del dia</h5>
+                <h5>{businessSelectedDates.length > 1 ? "Reservas" : "Reservas del dia"}</h5>
                 {businessSelectedDateBookings.length > 0 ? (
                   businessSelectedDateBookings
                     .slice()
-                    .sort((a, b) => a.time.localeCompare(b.time))
+                    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
                     .map((booking) => (
                       <div key={booking.id} className="business-day-booking">
                         <div>
-                          <strong>{booking.time.slice(0, 5)} · {booking.serviceName}</strong>
+                          <strong>{businessSelectedDates.length > 1 ? `${formatShortDay(booking.date)} · ` : ""}{booking.time.slice(0, 5)} · {booking.serviceName}</strong>
                           <span>{getCustomerName(booking)} · {getPaymentMethodLabel(booking)}</span>
                         </div>
                         <StatusBadge status={booking.status} />
                       </div>
                     ))
                 ) : (
-                  <p>No hay reservas registradas para este dia.</p>
+                  <p>No hay reservas registradas para {businessSelectedDates.length > 1 ? "estos días" : "este dia"}.</p>
                 )}
               </div>
             </div>
@@ -2395,25 +2418,25 @@ export default function BookingsClient({
           <div>
             <h3 className="panel-title">Reservas registradas</h3>
             {isBusiness ? (
-              <p className="business-panel-copy">{businessSelectedDate ? formatShortDay(businessSelectedDate) : "Todas las fechas"}</p>
+              <p className="business-panel-copy">{businessSelectedDates.length > 0 ? (businessSelectedDates.length === 1 ? formatShortDay(businessSelectedDates[0]) : `${businessSelectedDates.length} días seleccionados`) : "Todas las fechas"}</p>
             ) : null}
           </div>
           <div className="filter-row">
             {isBusiness ? (
               <button 
                 type="button" 
-                className={`filter-pill ${businessSelectedDate === null && statusFilter === "all" ? "filter-pill--active" : ""}`} 
-                onClick={() => { setBusinessSelectedDate(null); setStatusFilter("all"); }}
+                className={`filter-pill ${businessSelectedDates.length === 0 && statusFilter === "all" ? "filter-pill--active" : ""}`} 
+                onClick={() => { selectBusinessCalendarDate(null); setStatusFilter("all"); }}
               >
                 Todas
               </button>
             ) : null}
             <button 
               type="button" 
-              className={`filter-pill ${(!isBusiness || businessSelectedDate !== null) && statusFilter === "all" ? "filter-pill--active" : ""}`} 
+              className={`filter-pill ${(!isBusiness || businessSelectedDates.length > 0) && statusFilter === "all" ? "filter-pill--active" : ""}`} 
               onClick={() => {
-                if (isBusiness && businessSelectedDate === null) {
-                  setBusinessSelectedDate(getTodayValue());
+                if (isBusiness && businessSelectedDates.length === 0) {
+                  selectBusinessCalendarDate(getTodayValue());
                 }
                 setStatusFilter("all");
               }}
@@ -2689,7 +2712,7 @@ export default function BookingsClient({
         }
 
         .business-calendar-actions {
-          display: none;
+          display: flex;
           align-items: center;
           justify-content: flex-end;
           gap: 10px;
